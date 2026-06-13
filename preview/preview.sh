@@ -41,10 +41,21 @@ fi
 
 read -p $'\nAssign to event? (Stop/Notification/... or Enter to skip): ' assign
 if [ -n "$assign" ]; then
-    entry="{\"type\":\"$type\",\"file\":\"\${CLAUDE_PLUGIN_ROOT}/sounds/$name\",\"label\":\"${name%.wav}\"}"
-    if [ "$type" = system ]; then
+    if [ "$type" = wav ]; then
+        entry="{\"type\":\"wav\",\"file\":\"\${CLAUDE_PLUGIN_ROOT}/sounds/$name\",\"label\":\"${name%.wav}\"}"
+    else
         entry="{\"type\":\"system\",\"sound\":\"$name\",\"label\":\"System $name\"}"
     fi
-    sed -i "/\"$assign\":/c\\"$assign\": [$entry]," "$CONFIG_FILE"
-    echo "OK $assign -> $name"
+    # Use Python for safe JSON editing to avoid sed JSON corruption
+    python3 -c "
+import json
+with open('$CONFIG_FILE') as f:
+    config = json.load(f)
+config['subscriptions']['$assign'] = [json.loads('$entry')]
+with open('$CONFIG_FILE', 'w') as f:
+    json.dump(config, f, indent=2)
+" 2>/dev/null && echo "OK $assign -> $name" || {
+    echo "Warning: Could not update config.json. Python3 required for safe JSON editing."
+    echo "Manual: Add to config.json: \"$assign\": [$entry]"
+}
 fi

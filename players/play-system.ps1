@@ -6,4 +6,6 @@ if ($Sound -notin $validSounds) {
     exit 1
 }
 
-[System.Media.SystemSounds]::$Sound.Play()
+$sp = New-Object System.Media.SoundPlayer
+$sp.Stream = ([System.Media.SystemSounds]::$Sound).Stream
+$sp.PlaySync()

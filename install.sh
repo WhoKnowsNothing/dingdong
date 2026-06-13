@@ -40,7 +40,7 @@ else
     cp -f "$SCRIPT_DIR/players/play-wav.sh" "$PLUGIN_DIR/players/"
     cp -f "$SCRIPT_DIR/players/play-system.sh" "$PLUGIN_DIR/players/"
     cp -f "$SCRIPT_DIR/preview/preview.sh" "$PLUGIN_DIR/preview/"
-    cp -f "$SCRIPT_DIR/hooks/hooks.json" "$PLUGIN_DIR/hooks/"
+    cp -f "$SCRIPT_DIR/hooks/hooks.unix.json" "$PLUGIN_DIR/hooks/hooks.json"
     chmod +x "$PLUGIN_DIR/events/"*.sh "$PLUGIN_DIR/players/"*.sh "$PLUGIN_DIR/preview/"*.sh 2>/dev/null || true
 fi
 
