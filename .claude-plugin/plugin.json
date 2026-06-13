@@ -1,0 +1,20 @@
+{
+  "name": "dingdong",
+  "description": "DingDong — customizable audio feedback for Claude Code events: task complete, notification, permission requests, elicitations, and agent idle alerts",
+  "version": "1.0.0",
+  "author": {
+    "name": "Claude User"
+  },
+  "homepage": "https://github.com/WhoKnowsNothing/claude-code-dingdong",
+  "repository": "https://github.com/WhoKnowsNothing/claude-code-dingdong",
+  "license": "MIT",
+  "keywords": [
+    "sounds",
+    "hooks",
+    "notification",
+    "audio",
+    "productivity",
+    "windows",
+    "dingdong"
+  ]
+}

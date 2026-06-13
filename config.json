@@ -1,0 +1,30 @@
+{
+  "volume": 80,
+  "events": {
+    "Stop": {
+      "type": "wav",
+      "file": "${CLAUDE_PLUGIN_ROOT}\\sounds\\done-classic.wav",
+      "label": "Classic Chime"
+    },
+    "Notification": {
+      "type": "wav",
+      "file": "${CLAUDE_PLUGIN_ROOT}\\sounds\\ding.wav",
+      "label": "Ding"
+    },
+    "PermissionRequest": {
+      "type": "system",
+      "sound": "Hand",
+      "label": "System Hand"
+    },
+    "Elicitation": {
+      "type": "system",
+      "sound": "Question",
+      "label": "System Question"
+    },
+    "TeammateIdle": {
+      "type": "system",
+      "sound": "Exclamation",
+      "label": "System Exclamation"
+    }
+  }
+}

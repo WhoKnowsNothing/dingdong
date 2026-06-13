@@ -1,0 +1,26 @@
+# DingDong .gitignore
+
+# Installed files
+.claude/
+~.claude/
+
+# Logs and debug artifacts
+*.log
+trace.txt
+logs/
+
+# Custom imported sounds (user-specific)
+sounds/denielcz-done_*.wav
+
+# IDE
+.vs/
+.vscode/
+*.suo
+*.user
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Documentation (generate before release)
+docs/

@@ -1,0 +1,18 @@
+{
+  "name": "dingdong-marketplace",
+  "description": "DingDong for Claude Code — customizable audio feedback for events",
+  "owner": {
+    "name": "Claude User"
+  },
+  "plugins": [
+    {
+      "name": "dingdong",
+      "description": "DingDong — customizable audio feedback for Claude Code events: task complete, notification, permission requests, elicitations, and agent idle alerts",
+      "version": "1.0.0",
+      "source": "./",
+      "author": {
+        "name": "Claude User"
+      }
+    }
+  ]
+}
