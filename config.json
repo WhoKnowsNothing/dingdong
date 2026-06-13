@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "subscriptions": {
+    "Stop": [
+      { "type": "wav", "file": "${CLAUDE_PLUGIN_ROOT}/sounds/done-classic.wav", "label": "Done" }
+    ],
+    "Notification": [
+      { "type": "wav", "file": "${CLAUDE_PLUGIN_ROOT}/sounds/pop.wav", "label": "Pop" }
+    ],
+    "PermissionRequest": [
+      { "type": "wav", "file": "${CLAUDE_PLUGIN_ROOT}/sounds/alert.wav", "label": "Alert" }
+    ],
+    "Elicitation": [
+      { "type": "wav", "file": "${CLAUDE_PLUGIN_ROOT}/sounds/question-double.wav", "label": "Question" }
+    ],
+    "TeammateIdle": [
+      { "type": "system", "sound": "Asterisk", "label": "System Asterisk" }
+    ]
+  },
+  "volume": 80
+}
