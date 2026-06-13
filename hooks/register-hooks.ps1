@@ -43,6 +43,16 @@ if (-not $config.hooks) {
 }
 $hooks = $config.hooks
 
+# Normalize: ensure all hooks entries are arrays (Claude Code requires array format)
+foreach ($prop in $hooks.PSObject.Properties) {
+    $matchers = $prop.Value
+    for ($i = 0; $i -lt $matchers.Count; $i++) {
+        if ($null -ne $matchers[$i].hooks -and $matchers[$i].hooks.GetType().Name -eq 'PSCustomObject') {
+            $matchers[$i].hooks = @($matchers[$i].hooks)
+        }
+    }
+}
+
 if ($Uninstall) {
     # Remove dingdong hooks, keep everything else
     $eventsToRemove = @()
