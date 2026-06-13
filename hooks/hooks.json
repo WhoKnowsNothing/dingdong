@@ -1,0 +1,67 @@
+{
+  "hooks": {
+    "Stop": [{
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/events/event-bus.ps1\" -Event Stop",
+        "timeout": 10,
+        "async": true
+      }]
+    }],
+    "Notification": [{
+      "matcher": "(?i)task.?complet|done|finished|completed",
+      "hooks": [{
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/events/event-bus.ps1\" -Event Notification",
+        "timeout": 10,
+        "async": true
+      }]
+    }],
+    "PermissionRequest": [{
+      "matcher": "Bash|Write|Edit|Read",
+      "hooks": [{
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/events/event-bus.ps1\" -Event PermissionRequest",
+        "timeout": 10,
+        "async": true
+      }]
+    }],
+    "Elicitation": [{
+      "matcher": ".*",
+      "hooks": [{
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/events/event-bus.ps1\" -Event Elicitation",
+        "timeout": 10,
+        "async": true
+      }]
+    }],
+    "TeammateIdle": [{
+      "matcher": ".*",
+      "hooks": [{
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/events/event-bus.ps1\" -Event TeammateIdle",
+        "timeout": 10,
+        "async": true
+      }]
+    }],
+    "PreToolUse": [{
+      "matcher": "AskUserQuestion",
+      "hooks": [{
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/events/event-bus.ps1\" -Event Elicitation",
+        "timeout": 10,
+        "async": true
+      }]
+    }],
+    "SubagentStop": [{
+      "matcher": ".*",
+      "hooks": [{
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/events/event-bus.ps1\" -Event Notification",
+        "timeout": 10,
+        "async": true
+      }]
+    }]
+  }
+}
