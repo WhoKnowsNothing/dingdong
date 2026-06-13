@@ -44,28 +44,22 @@ else
     chmod +x "$PLUGIN_DIR/events/"*.sh "$PLUGIN_DIR/players/"*.sh "$PLUGIN_DIR/preview/"*.sh 2>/dev/null || true
 fi
 
+# Copy register-hooks.ps1 (always, for both install and uninstall)
+cp -f "$SCRIPT_DIR/hooks/register-hooks.ps1" "$PLUGIN_DIR/hooks/"
+
 # Register hooks in settings.json
-SETTINGS_FILE="$HOME/.claude/settings.json"
-if [ -f "$SETTINGS_FILE" ]; then
-    echo "Registering hooks in $SETTINGS_FILE..."
-    echo ""
-    echo "Manual step: Add the following to your settings.json hooks section:"
-    echo "  See $PLUGIN_DIR/hooks/hooks.json for the hook definitions"
-    echo "  Then run: claude /hooks  (or restart Claude Code)"
+if [ -f "$HOME/.claude/settings.json" ]; then
+    echo "Registering hooks..."
+    if powershell -NoProfile -ExecutionPolicy Bypass -File "$PLUGIN_DIR/hooks/register-hooks.ps1" 2>&1 | grep -q OK; then
+        echo "  DingDong hooks registered in settings.json"
+    else
+        echo "  Warning: Could not auto-register hooks."
+        echo "  Manual: See $PLUGIN_DIR/hooks/hooks.json"
+    fi
 else
-    echo "settings.json not found at $SETTINGS_FILE"
-    echo "Create it manually, or run Claude Code once to auto-generate it."
+    echo "settings.json not found. Run Claude Code once to create it, then reinstall."
 fi
 
 echo ""
 echo "DingDong installed to $PLUGIN_DIR"
-echo ""
-echo "Next steps:"
-echo "  1. Preview sounds:"
-if [ "$OS" = "windows" ]; then
-    echo "     powershell -File \"$PLUGIN_DIR/preview/preview.ps1\""
-else
-    echo "     $PLUGIN_DIR/preview/preview.sh"
-fi
-echo "  2. Register hooks from $PLUGIN_DIR/hooks/hooks.json in your settings.json"
-echo "  3. Run /hooks in Claude Code to reload"
+echo "Run '/hooks' in Claude Code to reload, or restart."

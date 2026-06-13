@@ -16,68 +16,42 @@ else
     echo "[1/2] DingDong not found at $PLUGIN_DIR"
 fi
 
-# Step 2: Remove only DingDong Hook entries from settings.json
-# Only touches hooks whose command contains "dingdong" or "play-sound.ps1"
-# Other hooks (model-router, notify-feishu, etc.) are preserved.
+# Step 2: Remove DingDong hooks from settings.json
 if [ -f "$SETTINGS_FILE" ]; then
-    CLEANED=0
-
-    # Try PowerShell first (Windows), then python3 (Unix/macOS)
-    if command -v powershell &>/dev/null; then
+    # Check for lingering dingdong hooks and remove them
+    # Use register-hooks.ps1 if it still exists, or inline PowerShell
+    REGISTER_SCRIPT="$PLUGIN_DIR/hooks/register-hooks.ps1"
+    if [ -f "$REGISTER_SCRIPT" ]; then
+        powershell -NoProfile -ExecutionPolicy Bypass -File "$REGISTER_SCRIPT" -Uninstall 2>&1 | grep -q OK && \
+            echo "[2/2] Removed DingDong hooks from settings.json" || \
+            echo "[2/2] Warning: Could not clean settings.json"
+    elif command -v powershell &>/dev/null; then
+        # Fallback: inline cleanup for hooks with dingdong/event-bus/play-sound in their command
         powershell -NoProfile -Command "
-\$config = Get-Content '$SETTINGS_FILE' -Raw | ConvertFrom-Json
-\$hooks = \$config.hooks
-if (-not \$hooks) { exit 0 }
-\$eventsToRemove = @()
-foreach (\$event in \$hooks.PSObject.Properties.Name) {
-    \$matchers = \$hooks.\$event
-    foreach (\$matcher in \$matchers) {
-        if (\$matcher.hooks) {
-            \$matcher.hooks = \$matcher.hooks | Where-Object {
-                \$cmd = \$_.command
-                \$cmd -notmatch 'dingdong' -and \$cmd -notmatch 'play-sound\\.ps1'
+            \$json = Get-Content '$SETTINGS_FILE' -Raw
+            \$config = \$json | ConvertFrom-Json
+            if (-not \$config.hooks) { exit 0 }
+            \$hooks = \$config.hooks
+            \$eventsToRemove = @()
+            foreach (\$prop in \$hooks.PSObject.Properties) {
+                \$keepers = @()
+                foreach (\$matcher in \$prop.Value) {
+                    if (\$matcher.hooks) {
+                        \$kept = \$matcher.hooks | Where-Object { \$_.command -notmatch 'dingdong|event-bus\\.ps1|play-sound\\.ps1' }
+                        if (\$kept) { \$matcher.hooks = \$kept; \$keepers += \$matcher }
+                    }
+                }
+                if (\$keepers.Count -gt 0) { \$hooks.\$(\$prop.Name) = \$keepers }
+                else { \$eventsToRemove += \$prop.Name }
             }
-        }
-    }
-    # Remove empty matcher entries
-    \$hooks.\$event = \$matchers | Where-Object { \$_.hooks -and \$_.hooks.Count -gt 0 }
-    if (-not \$hooks.\$event -or \$hooks.\$event.Count -eq 0) {
-        \$eventsToRemove += \$event
-    }
-}
-foreach (\$e in \$eventsToRemove) { \$hooks.PSObject.Properties.Remove(\$e) }
-if (\$hooks.PSObject.Properties.Name.Count -eq 0) {
-    \$config.PSObject.Properties.Remove('hooks')
-}
-\$config | ConvertTo-Json -Depth 10 | Set-Content '$SETTINGS_FILE'
-Write-Output 'CLEANED'
-" 2>&1 | grep -q CLEANED && { echo "[2/2] Removed DingDong hooks from settings.json"; CLEANED=1; }
-
-    elif command -v python3 &>/dev/null; then
-        python3 -c "
-import json
-with open('$SETTINGS_FILE') as f:
-    config = json.load(f)
-hooks = config.get('hooks', {})
-for event in list(hooks.keys()):
-    matchers = hooks[event]
-    for m in matchers:
-        m['hooks'] = [h for h in m.get('hooks', [])
-            if 'dingdong' not in h.get('command', '').lower()
-            and 'play-sound.ps1' not in h.get('command', '')]
-    hooks[event] = [m for m in matchers if m.get('hooks')]
-    if not hooks[event]:
-        del hooks[event]
-if not hooks:
-    del config['hooks']
-with open('$SETTINGS_FILE', 'w') as f:
-    json.dump(config, f, indent=2)
-" 2>&1 && { echo "[2/2] Removed DingDong hooks from settings.json"; CLEANED=1; }
-    fi
-
-    if [ "$CLEANED" -eq 0 ]; then
-        echo "[2/2] Could not auto-clean. Manually remove entries with 'dingdong' or 'play-sound.ps1' from:"
-        echo "      $SETTINGS_FILE"
+            foreach (\$e in \$eventsToRemove) { \$hooks.PSObject.Properties.Remove(\$e) }
+            if (-not \$hooks.PSObject.Properties.Name) { \$config.PSObject.Properties.Remove('hooks') }
+            \$config | ConvertTo-Json -Depth 10 | Set-Content '$SETTINGS_FILE'
+            Write-Output 'OK'
+        " 2>&1 | grep -q OK && echo "[2/2] Removed DingDong hooks from settings.json" || \
+            echo "[2/2] Manual: Remove dingdong hooks from $SETTINGS_FILE"
+    else
+        echo "[2/2] Manual: Remove dingdong hooks from $SETTINGS_FILE"
     fi
 else
     echo "[2/2] settings.json not found, nothing to clean"
