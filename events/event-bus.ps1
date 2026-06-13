@@ -14,7 +14,7 @@ if (-not (Test-Path $configPath)) {
 $config = Get-Content $configPath -Raw | ConvertFrom-Json
 
 $subs = $config.subscriptions.$Event
-if (-not $subs) { exit 0 }
+if (-not $subs) { return }
 
 $results = @()
 foreach ($sub in $subs) {
@@ -41,3 +41,4 @@ foreach ($sub in $subs) {
 }
 
 if ($DryRun) { return $results }
+else { $results | Out-Null }

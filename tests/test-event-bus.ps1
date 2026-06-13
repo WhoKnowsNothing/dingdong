@@ -34,15 +34,16 @@ Describe "Unknown events" {
 #   Then a clear error message is written to stderr
 Describe "Missing config" {
     It "reports clear error when config.json is missing" {
-        # Temporarily rename config to simulate missing
+        # Temporarily remove config to simulate missing
         $configPath = Join-Path $projectRoot "config.json"
         $backup = Join-Path $projectRoot "config.json.bak"
-        Rename-Item $configPath $backup
+        Copy-Item $configPath $backup
+        Remove-Item $configPath
         try {
             { & "$projectRoot/events/event-bus.ps1" -Event Stop -ErrorAction Stop } | Should -Throw
         }
         finally {
-            Rename-Item $backup $configPath
+            Move-Item $backup $configPath -Force
         }
     }
 }
