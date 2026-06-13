@@ -2,12 +2,19 @@
 #   Acts as the pub-sub dispatcher. Receives an event name,
 #   reads the subscription registry, routes to subscribers.
 
+BeforeAll {
+    $projectRoot = Resolve-Path "$PSScriptRoot/.."
+}
+
 # Scenario: Valid event dispatches all subscribers
 #   Given config.json has subscriptions.Stop with subscribers
 #   When event-bus.ps1 -Event Stop is called
 #   Then each subscriber's player is invoked
 Describe "Event dispatch" {
     It "dispatches all subscribers for a valid event" {
+        $result = & "$projectRoot/events/event-bus.ps1" -Event Stop -DryRun
+        $result.Count | Should -BeGreaterThan 0
+        $result[0].Type | Should -Be "wav"
     }
 }
 
@@ -17,6 +24,7 @@ Describe "Event dispatch" {
 #   Then no player is invoked and exit code is 0
 Describe "Unknown events" {
     It "silently handles unknown events without error" {
+        { & "$projectRoot/events/event-bus.ps1" -Event NonExistentEvent -DryRun } | Should -Not -Throw
     }
 }
 
@@ -26,6 +34,16 @@ Describe "Unknown events" {
 #   Then a clear error message is written to stderr
 Describe "Missing config" {
     It "reports clear error when config.json is missing" {
+        # Temporarily rename config to simulate missing
+        $configPath = Join-Path $projectRoot "config.json"
+        $backup = Join-Path $projectRoot "config.json.bak"
+        Rename-Item $configPath $backup
+        try {
+            { & "$projectRoot/events/event-bus.ps1" -Event Stop -ErrorAction Stop } | Should -Throw
+        }
+        finally {
+            Rename-Item $backup $configPath
+        }
     }
 }
 
@@ -35,5 +53,8 @@ Describe "Missing config" {
 #   Then the path is absolute and points to the plugin directory
 Describe "Path resolution" {
     It "resolves CLAUDE_PLUGIN_ROOT to absolute paths" {
+        $result = & "$projectRoot/events/event-bus.ps1" -Event Stop -DryRun
+        $result[0].File | Should -Not -Match '\$\{CLAUDE_PLUGIN_ROOT\}'
+        $result[0].File | Should -Exist
     }
 }
