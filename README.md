@@ -14,30 +14,6 @@ Zero-dependency audio feedback for Claude Code — customizable WAV sounds trigg
 
 DingDong plays customizable WAV sounds when Claude Code fires hook events — Stop, Notification, PermissionRequest, Elicitation, TeammateIdle. No dependencies, no background services, one async process hop.
 
-## Features
-
-- **7 event types** with independent sound assignments
-- **Cross-platform**: Windows, macOS, Linux
-- **13 built-in WAV chimes** (no copyrighted audio)
-- **Terminal TUI** configurator (cross-platform)
-- **WinForms GUI** configurator (Windows only)
-- **Per-event mute** (set to `null`)
-- **Async hooks** — never blocks Claude Code
-- **Zero dependencies** — pure shell + PowerShell
-- **Custom WAV import** — drop files into `sounds/`
-
-## Events
-
-| Event | Trigger | Default Sound |
-|-------|---------|---------------|
-| **Stop** | Claude finishes a response | `denielcz-done_01.wav` |
-| **Notification** | Task completion notification | `pop.wav` |
-| **PermissionRequest** | Claude needs tool permission | `notify-descend.wav` |
-| **Elicitation** | Claude asks a clarifying question | `question-double.wav` |
-| **TeammateIdle** | Sub-agent is idle / stuck | *(silent)* |
-| **PreToolUse** → Elicitation | Alternative elicitation trigger | *(inherits Elicitation)* |
-| **SubagentStop** → Notification | Alternative notification trigger | *(inherits Notification)* |
-
 ## Quick Start
 
 ### Install
@@ -82,6 +58,30 @@ Set an event to `null` to mute it. Paths are relative to plugin root.
 powershell -File scripts/uninstall.ps1        # Windows
 bash scripts/uninstall.sh                      # Unix
 ```
+
+## Features
+
+- **7 event types** with independent sound assignments
+- **Cross-platform**: Windows, macOS, Linux
+- **13 built-in WAV chimes** (no copyrighted audio)
+- **Terminal TUI** configurator (cross-platform)
+- **WinForms GUI** configurator (Windows only)
+- **Per-event mute** (set to `null`)
+- **Async hooks** — never blocks Claude Code
+- **Zero dependencies** — pure shell + PowerShell
+- **Custom WAV import** — drop files into `sounds/`
+
+## Events
+
+| Event | Trigger | Default Sound |
+|-------|---------|---------------|
+| **Stop** | Claude finishes a response | `denielcz-done_01.wav` |
+| **Notification** | Task completion notification | `pop.wav` |
+| **PermissionRequest** | Claude needs tool permission | `notify-descend.wav` |
+| **Elicitation** | Claude asks a clarifying question | `question-double.wav` |
+| **TeammateIdle** | Sub-agent is idle / stuck | *(silent)* |
+| **PreToolUse** → Elicitation | Alternative elicitation trigger | *(inherits Elicitation)* |
+| **SubagentStop** → Notification | Alternative notification trigger | *(inherits Notification)* |
 
 ## Sounds
 
@@ -129,30 +129,6 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full dependency graph and data fl
 
 DingDing（叮咚）是 Claude Code 的音频反馈插件。当 Claude Code 触发 Hook 事件时（Stop、Notification、PermissionRequest、Elicitation、TeammateIdle），播放可自定义的 WAV 音效。零依赖，无后台进程，一次异步调用即完成。
 
-## 功能特性
-
-- **7 种事件**独立配置音效
-- **跨平台**：Windows、macOS、Linux
-- **13 个内置 WAV 音效**（纯代码生成，无版权问题）
-- **终端 TUI 配置界面**（跨平台）
-- **WinForms 图形配置界面**（仅 Windows）
-- **每事件单独静音**（设为 `null`）
-- **异步 Hook** — 不阻塞 Claude Code
-- **零依赖** — 纯 shell + PowerShell
-- **支持导入自定义 WAV**
-
-## 事件对照
-
-| 事件 | 触发条件 | 默认音效 |
-|------|----------|----------|
-| **Stop** | Claude 结束回复 | `denielcz-done_01.wav` |
-| **Notification** | 任务完成通知 | `pop.wav` |
-| **PermissionRequest** | Claude 请求工具权限 | `notify-descend.wav` |
-| **Elicitation** | Claude 提问澄清 | `question-double.wav` |
-| **TeammateIdle** | 子 agent 空闲/卡住 | *（静音）* |
-| **PreToolUse** → Elicitation | 替代提问触发 | *（沿用 Elicitation）* |
-| **SubagentStop** → Notification | 替代通知触发 | *（沿用 Notification）* |
-
 ## 快速开始
 
 ### 安装
@@ -197,6 +173,30 @@ powershell -File config-ui.ps1
 powershell -File scripts/uninstall.ps1        # Windows
 bash scripts/uninstall.sh                      # Unix
 ```
+
+## 功能特性
+
+- **7 种事件**独立配置音效
+- **跨平台**：Windows、macOS、Linux
+- **13 个内置 WAV 音效**（纯代码生成，无版权问题）
+- **终端 TUI 配置界面**（跨平台）
+- **WinForms 图形配置界面**（仅 Windows）
+- **每事件单独静音**（设为 `null`）
+- **异步 Hook** — 不阻塞 Claude Code
+- **零依赖** — 纯 shell + PowerShell
+- **支持导入自定义 WAV**
+
+## 事件对照
+
+| 事件 | 触发条件 | 默认音效 |
+|------|----------|----------|
+| **Stop** | Claude 结束回复 | `denielcz-done_01.wav` |
+| **Notification** | 任务完成通知 | `pop.wav` |
+| **PermissionRequest** | Claude 请求工具权限 | `notify-descend.wav` |
+| **Elicitation** | Claude 提问澄清 | `question-double.wav` |
+| **TeammateIdle** | 子 agent 空闲/卡住 | *（静音）* |
+| **PreToolUse** → Elicitation | 替代提问触发 | *（沿用 Elicitation）* |
+| **SubagentStop** → Notification | 替代通知触发 | *（沿用 Notification）* |
 
 ## 音效列表
 
