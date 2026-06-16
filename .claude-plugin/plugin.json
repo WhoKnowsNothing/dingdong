@@ -1,10 +1,13 @@
 {
   "name": "dingdong",
-  "description": "Zero-dependency audio feedback for Claude Code — pub-sub sound system triggered by hooks. Cross-platform (Windows/macOS/Linux).",
-  "version": "1.0.0",
+  "description": "Zero-dependency audio feedback for Claude Code — WAV sounds triggered by hooks. Cross-platform (Windows/macOS/Linux).",
+  "version": "0.0.5",
   "author": { "name": "WhoKnowsNothing" },
-  "homepage": "https://github.com/WhoKnowsNothing/dingdong",
-  "repository": "https://github.com/WhoKnowsNothing/dingdong",
   "license": "MIT",
-  "keywords": ["sounds", "hooks", "notification", "audio", "cross-platform", "dingdong", "pub-sub"]
+  "keywords": ["sounds", "hooks", "notification", "audio", "cross-platform", "dingdong"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WhoKnowsNothing/dingdong.git"
+  },
+  "homepage": "https://github.com/WhoKnowsNothing/dingdong#readme"
 }

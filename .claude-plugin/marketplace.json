@@ -1,0 +1,17 @@
+{
+  "name": "dingdong",
+  "owner": {
+    "name": "WhoKnowsNothing"
+  },
+  "plugins": [
+    {
+      "name": "dingdong",
+      "source": {
+        "source": "github",
+        "repo": "WhoKnowsNothing/dingdong"
+      },
+      "description": "Zero-dependency audio feedback for Claude Code — WAV sounds triggered by hooks. Cross-platform (Windows/macOS/Linux).",
+      "version": "0.0.5"
+    }
+  ]
+}
