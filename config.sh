@@ -217,7 +217,7 @@ while true; do
           echo "╚══════════════════════════════════════╝" >&2
           echo "" >&2
           echo "  0) 静音 $([ "$current_type" = "none" ] && echo '← 当前')" >&2
-          local i=1
+          i=1
           for s in "${local_sounds[@]}"; do
             label="$(friendly_name "$s")"
             marker=""
