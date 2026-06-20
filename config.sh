@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # DingDong — 交互终端配置工具 (跨平台)
-# 零依赖: bash 4+ + ANSI escape codes
+# 零依赖: bash 4.3+ + ANSI escape codes
 
 set -euo pipefail
 

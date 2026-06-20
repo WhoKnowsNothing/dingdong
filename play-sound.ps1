@@ -1,5 +1,16 @@
 param([string]$Event)
 
+# winmm.dll P/Invoke — defined once at script scope to avoid Add-Type duplicate errors
+if (-not ([System.Management.Automation.PSTypeName]'DD').Type) {
+Add-Type @'
+using System.Runtime.InteropServices;
+public class DD {
+    [DllImport("winmm.dll", SetLastError=true)]
+    public static extern bool PlaySound(string pszSound, System.IntPtr hmod, uint fdwSound);
+}
+'@
+}
+
 $scriptDir = Split-Path -Parent $PSCommandPath
 $configPath = Join-Path $scriptDir "config.json"
 if (-not (Test-Path $configPath)) { exit 0 }
@@ -52,14 +63,6 @@ if ($type -eq "system") {
 if ($type -eq "wav") {
     $wavPath = Join-Path $scriptDir $eventCfg.file
     if (-not (Test-Path $wavPath)) { exit 0 }
-    # winmm.dll PlaySound — no process hop, no flash window
-    Add-Type @'
-using System.Runtime.InteropServices;
-public class DD {
-    [DllImport("winmm.dll", SetLastError=true)]
-    public static extern bool PlaySound(string pszSound, System.IntPtr hmod, uint fdwSound);
-}
-'@
     [DD]::PlaySound($wavPath, [System.IntPtr]::Zero, 0x00020000) | Out-Null
     exit 0
 }

@@ -195,10 +195,29 @@ $btnCancel.Location = New-Object System.Drawing.Point(120, 392)
 $btnCancel.Size = New-Object System.Drawing.Size(100, 30)
 
 $modified = $false
+$script:activeEventKey = $null
+
+function Save-ActiveToConfig {
+    if (-not $script:activeEventKey) { return }
+    $selSound = $cboSound.SelectedItem
+    if ($selSound -and $selSound -ne "(" + [char]0x9759 + [char]0x97F3 + ")") {
+        $cfg.events[$script:activeEventKey] = @{ type = "wav"; file = "sounds/$selSound.wav" }
+    } else {
+        $cfg.events[$script:activeEventKey] = @{ type = "none" }
+    }
+    $cfg.events[$script:activeEventKey].volume = [int]$trackVolume.Value
+}
 
 $eventList.Add_SelectedIndexChanged({
     $selItem = $eventList.SelectedItem
     if (-not $selItem) { return }
+    # Flush pending changes for the previously-active event before switching
+    if ($script:activeEventKey -and $modified) {
+        Save-ActiveToConfig
+        $script:modified = $false
+    }
+    $script:activeEventKey = $selItem.Key
+
     $evt = $cfg.events[$selItem.Key]
     if ($evt -and $evt.type -eq "wav" -and $evt.file) {
         $name = [System.IO.Path]::GetFileNameWithoutExtension($evt.file)
@@ -258,13 +277,8 @@ $soundList.Add_DoubleClick({
 $btnSave.Add_Click({
     $selItem = $eventList.SelectedItem
     if (-not $selItem) { return }
-    $selSound = $cboSound.SelectedItem
-    if ($selSound -and $selSound -ne "(" + [char]0x9759 + [char]0x97F3 + ")") {
-        $cfg.events[$selItem.Key] = @{ type = "wav"; file = "sounds/$selSound.wav" }
-    } else {
-        $cfg.events[$selItem.Key] = @{ type = "none" }
-    }
-    $cfg.events[$selItem.Key].volume = [int]$trackVolume.Value
+    # Flush active event's UI state to in-memory config, then persist all
+    Save-ActiveToConfig
     Save-Config $cfg
     $script:modified = $false
     [System.Windows.Forms.MessageBox]::Show([char]0x914D + [char]0x7F6E + [char]0x5DF2 + [char]0x4FDD + [char]0x5B58, "DingDong", "OK", "Information")
