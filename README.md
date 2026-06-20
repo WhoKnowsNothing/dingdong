@@ -1,6 +1,6 @@
 # DingDong 叮咚
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 
 Zero-dependency audio feedback for Claude Code — customizable WAV sounds triggered by hook events. Cross-platform (Windows / macOS / Linux).
 
@@ -262,4 +262,6 @@ Event → settings.json hooks → play-sound.ps1/.sh → config.json 查表 → 
 
 ## License
 
-MIT © [WhoKnowsNothing](https://github.com/WhoKnowsNothing)
+AGPL-3.0 © [WhoKnowsNothing](https://github.com/WhoKnowsNothing)
+
+Commercial license available — see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).

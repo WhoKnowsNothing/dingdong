@@ -1,4 +1,4 @@
-﻿# DingDong Configuration GUI - Windows WinForms
+# DingDong Configuration GUI - Windows WinForms
 # Zero external dependencies: uses built-in System.Windows.Forms + System.Drawing
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -15,6 +15,13 @@ public class DD {
 $scriptDir = Split-Path -Parent $PSCommandPath
 $soundsDir = Join-Path $scriptDir "sounds"
 $configPath = Join-Path $scriptDir "config.json"
+
+# system sounds available on Windows
+$sysPrefix = "[" + [char]0x7CFB + [char]0x7EDF + "] "
+$systemSounds = @(
+    @{ name = "Hand";        display = $sysPrefix + "Hand" }
+    @{ name = "Asterisk";    display = $sysPrefix + "Asterisk" }
+)
 
 function Get-Config {
     if (-not (Test-Path $configPath)) {
@@ -72,9 +79,24 @@ function Get-EventDisplayName($key) {
     }
 }
 
+function Is-SystemSound($itemText) {
+    return $itemText -and $itemText.StartsWith($sysPrefix)
+}
+
+function Play-SystemSoundByName($name) {
+    switch ($name) {
+        "Hand"        { [System.Media.SystemSounds]::Hand.Play() }
+        "Question"    { [System.Media.SystemSounds]::Question.Play() }
+        "Exclamation" { [System.Media.SystemSounds]::Exclamation.Play() }
+        "Asterisk"    { [System.Media.SystemSounds]::Asterisk.Play() }
+        "Beep"        { [System.Media.SystemSounds]::Beep.Play() }
+        default       { [System.Media.SystemSounds]::Beep.Play() }
+    }
+}
+
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "DingDong " + [char]0x53EE + [char]0x549A + " " + [char]0x914D + [char]0x7F6E
-$form.Size = New-Object System.Drawing.Size(620, 460)
+$form.Size = New-Object System.Drawing.Size(620, 480)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedSingle"
 $form.MaximizeBox = $false
@@ -101,7 +123,7 @@ foreach ($key in $eventKeys) {
     } elseif ($evt -and $evt.type -eq "none") {
         $display += "  [" + [char]0x9759 + [char]0x97F3 + "]"
     } elseif ($evt -and $evt.type -eq "system") {
-        $display += "  [system: $($evt.sound)]"
+        $display += "  [" + $sysPrefix + $($evt.sound) + "]"
     }
     $item = [PSCustomObject]@{ Key = $key; Display = $display }
     [void]$eventList.Items.Add($item)
@@ -121,15 +143,8 @@ $lblSound.Size = New-Object System.Drawing.Size(50, 23)
 
 $cboSound = New-Object System.Windows.Forms.ComboBox
 $cboSound.Location = New-Object System.Drawing.Point(58, 18)
-$cboSound.Size = New-Object System.Drawing.Size(190, 23)
+$cboSound.Size = New-Object System.Drawing.Size(270, 23)
 $cboSound.DropDownStyle = "DropDownList"
-
-$hintLabel = New-Object System.Windows.Forms.Label
-$hintLabel.Text = "WAV " + [char]0x4E13 + [char]0x7528
-$hintLabel.Location = New-Object System.Drawing.Point(250, 20)
-$hintLabel.Size = New-Object System.Drawing.Size(80, 20)
-$hintLabel.ForeColor = [System.Drawing.Color]::Gray
-$hintLabel.Font = New-Object System.Drawing.Font("Microsoft YaHei", 8)
 
 $lblVolume = New-Object System.Windows.Forms.Label
 $lblVolume.Text = [char]0x97F3 + [char]0x91CF + ":"
@@ -154,16 +169,19 @@ $btnPreview.Text = [char]0x25B6 + " " + [char]0x8BD5 + [char]0x542C
 $btnPreview.Location = New-Object System.Drawing.Point(8, 90)
 $btnPreview.Size = New-Object System.Drawing.Size(80, 28)
 
-$btnImport = New-Object System.Windows.Forms.Button
-$btnImport.Text = [char]0x5BFC + [char]0x5165 + " WAV"
-$btnImport.Location = New-Object System.Drawing.Point(94, 90)
-$btnImport.Size = New-Object System.Drawing.Size(90, 28)
+$detailGroup.Controls.AddRange(@($lblSound, $cboSound, $lblVolume, $trackVolume, $lblVolVal, $btnPreview))
 
-$detailGroup.Controls.AddRange(@($lblSound, $cboSound, $hintLabel, $lblVolume, $trackVolume, $lblVolVal, $btnPreview, $btnImport))
+# Hint label above sound library
+$hintLabel = New-Object System.Windows.Forms.Label
+$hintLabel.Text = [char]0x76EE + [char]0x524D + [char]0x4EC5 + [char]0x652F + [char]0x6301 + [char]0x5BFC + [char]0x5165 + "WAV" + [char]0x6587 + [char]0x4EF6
+$hintLabel.Location = New-Object System.Drawing.Point(12, 195)
+$hintLabel.Size = New-Object System.Drawing.Size(280, 18)
+$hintLabel.ForeColor = [System.Drawing.Color]::Gray
+$hintLabel.Font = New-Object System.Drawing.Font("Microsoft YaHei", 8)
 
 $soundGroup = New-Object System.Windows.Forms.GroupBox
 $soundGroup.Text = [char]0x97F3 + [char]0x6548 + [char]0x5E93
-$soundGroup.Location = New-Object System.Drawing.Point(12, 200)
+$soundGroup.Location = New-Object System.Drawing.Point(12, 215)
 $soundGroup.Size = New-Object System.Drawing.Size(588, 180)
 
 $soundList = New-Object System.Windows.Forms.ListBox
@@ -174,6 +192,12 @@ function Refresh-SoundList {
     $soundList.Items.Clear()
     $cboSound.Items.Clear()
     [void]$cboSound.Items.Add("(" + [char]0x9759 + [char]0x97F3 + ")")
+    # System sounds
+    foreach ($s in $systemSounds) {
+        [void]$soundList.Items.Add($s.display)
+        [void]$cboSound.Items.Add($s.display)
+    }
+    # WAV files
     Get-SoundList | ForEach-Object {
         [void]$soundList.Items.Add($_)
         $name = [System.IO.Path]::GetFileNameWithoutExtension($_)
@@ -184,15 +208,21 @@ Refresh-SoundList
 
 $soundGroup.Controls.Add($soundList)
 
+# Bottom buttons row
+$btnImport = New-Object System.Windows.Forms.Button
+$btnImport.Text = [char]0x5BFC + [char]0x5165 + " WAV"
+$btnImport.Location = New-Object System.Drawing.Point(12, 405)
+$btnImport.Size = New-Object System.Drawing.Size(90, 28)
+
 $btnSave = New-Object System.Windows.Forms.Button
 $btnSave.Text = [char]0x4FDD + [char]0x5B58
-$btnSave.Location = New-Object System.Drawing.Point(12, 392)
-$btnSave.Size = New-Object System.Drawing.Size(100, 30)
+$btnSave.Location = New-Object System.Drawing.Point(400, 405)
+$btnSave.Size = New-Object System.Drawing.Size(90, 28)
 
 $btnCancel = New-Object System.Windows.Forms.Button
 $btnCancel.Text = [char]0x53D6 + [char]0x6D88
-$btnCancel.Location = New-Object System.Drawing.Point(120, 392)
-$btnCancel.Size = New-Object System.Drawing.Size(100, 30)
+$btnCancel.Location = New-Object System.Drawing.Point(498, 405)
+$btnCancel.Size = New-Object System.Drawing.Size(90, 28)
 
 $modified = $false
 $script:activeEventKey = $null
@@ -200,10 +230,13 @@ $script:activeEventKey = $null
 function Save-ActiveToConfig {
     if (-not $script:activeEventKey) { return }
     $selSound = $cboSound.SelectedItem
-    if ($selSound -and $selSound -ne "(" + [char]0x9759 + [char]0x97F3 + ")") {
-        $cfg.events[$script:activeEventKey] = @{ type = "wav"; file = "sounds/$selSound.wav" }
-    } else {
+    if (-not $selSound -or $selSound -eq "(" + [char]0x9759 + [char]0x97F3 + ")") {
         $cfg.events[$script:activeEventKey] = @{ type = "none" }
+    } elseif (Is-SystemSound $selSound) {
+        $sysName = $selSound.Substring($sysPrefix.Length)
+        $cfg.events[$script:activeEventKey] = @{ type = "system"; sound = $sysName }
+    } else {
+        $cfg.events[$script:activeEventKey] = @{ type = "wav"; file = "sounds/$selSound.wav" }
     }
     $cfg.events[$script:activeEventKey].volume = [int]$trackVolume.Value
 }
@@ -222,6 +255,11 @@ $eventList.Add_SelectedIndexChanged({
     if ($evt -and $evt.type -eq "wav" -and $evt.file) {
         $name = [System.IO.Path]::GetFileNameWithoutExtension($evt.file)
         $idx = $cboSound.Items.IndexOf($name)
+        if ($idx -ge 0) { $cboSound.SelectedIndex = $idx }
+        else { $cboSound.SelectedIndex = 0 }
+    } elseif ($evt -and $evt.type -eq "system" -and $evt.sound) {
+        $displayName = $sysPrefix + $evt.sound
+        $idx = $cboSound.Items.IndexOf($displayName)
         if ($idx -ge 0) { $cboSound.SelectedIndex = $idx }
         else { $cboSound.SelectedIndex = 0 }
     } else {
@@ -243,9 +281,14 @@ $trackVolume.Add_Scroll({
 $btnPreview.Add_Click({
     $sel = $cboSound.SelectedItem
     if (-not $sel -or $sel -eq "(" + [char]0x9759 + [char]0x97F3 + ")") { return }
-    $wavPath = Join-Path $soundsDir "$sel.wav"
-    if (Test-Path $wavPath) {
-        [DD]::PlaySound($wavPath, [System.IntPtr]::Zero, 0x00020000) | Out-Null
+    if (Is-SystemSound $sel) {
+        $sysName = $sel.Substring($sysPrefix.Length)
+        Play-SystemSoundByName $sysName
+    } else {
+        $wavPath = Join-Path $soundsDir "$sel.wav"
+        if (Test-Path $wavPath) {
+            [DD]::PlaySound($wavPath, [System.IntPtr]::Zero, 0x00020000) | Out-Null
+        }
     }
 })
 
@@ -268,16 +311,20 @@ $btnImport.Add_Click({
 $soundList.Add_DoubleClick({
     $sel = $soundList.SelectedItem
     if (-not $sel) { return }
-    $wavPath = Join-Path $soundsDir $sel
-    if (Test-Path $wavPath) {
-        [DD]::PlaySound($wavPath, [System.IntPtr]::Zero, 0x00020000) | Out-Null
+    if (Is-SystemSound $sel) {
+        $sysName = $sel.Substring($sysPrefix.Length)
+        Play-SystemSoundByName $sysName
+    } else {
+        $wavPath = Join-Path $soundsDir $sel
+        if (Test-Path $wavPath) {
+            [DD]::PlaySound($wavPath, [System.IntPtr]::Zero, 0x00020000) | Out-Null
+        }
     }
 })
 
 $btnSave.Add_Click({
     $selItem = $eventList.SelectedItem
     if (-not $selItem) { return }
-    # Flush active event's UI state to in-memory config, then persist all
     Save-ActiveToConfig
     Save-Config $cfg
     $script:modified = $false
@@ -289,6 +336,8 @@ $btnCancel.Add_Click({
         $r = [System.Windows.Forms.MessageBox]::Show([char]0x6709 + [char]0x672A + [char]0x4FDD + [char]0x5B58 + [char]0x7684 + [char]0x66F4 + [char]0x6539 + [char]0xFF0C + [char]0x786E + [char]0x5B9A + [char]0x9000 + [char]0x51FA + [char]0xFF1F, "DingDong", "YesNo", "Warning")
         if ($r -ne "Yes") { return }
     }
+    # Clear modified flag so FormClosing won't prompt again
+    $script:modified = $false
     $form.Close()
 })
 
@@ -300,7 +349,7 @@ $form.Add_FormClosing({
     }
 })
 
-$form.Controls.AddRange(@($eventGroup, $detailGroup, $soundGroup, $btnSave, $btnCancel))
+$form.Controls.AddRange(@($eventGroup, $detailGroup, $hintLabel, $soundGroup, $btnImport, $btnSave, $btnCancel))
 
 if ($eventList.Items.Count -gt 0) { $eventList.SelectedIndex = 0 }
 
