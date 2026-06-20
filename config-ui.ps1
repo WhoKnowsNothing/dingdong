@@ -78,6 +78,7 @@ $form.Size = New-Object System.Drawing.Size(620, 460)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedSingle"
 $form.MaximizeBox = $false
+$form.Icon = [System.Drawing.Icon]::ExtractAssociatedIcon((Get-Command powershell).Source)
 
 $eventGroup = New-Object System.Windows.Forms.GroupBox
 $eventGroup.Text = [char]0x4E8B + [char]0x4EF6 + [char]0x5217 + [char]0x8868
@@ -91,7 +92,6 @@ $eventList.SelectionMode = "One"
 
 $cfg = Get-Config
 $eventKeys = @("Stop", "Notification", "PermissionRequest", "Elicitation", "TeammateIdle")
-$eventMap = @{}
 foreach ($key in $eventKeys) {
     $display = Get-EventDisplayName $key
     $evt = $cfg.events[$key]
@@ -104,7 +104,6 @@ foreach ($key in $eventKeys) {
         $display += "  [system: $($evt.sound)]"
     }
     $item = [PSCustomObject]@{ Key = $key; Display = $display }
-    $eventMap[$key] = $item
     [void]$eventList.Items.Add($item)
 }
 $eventList.DisplayMember = "Display"
@@ -236,6 +235,7 @@ $btnImport.Add_Click({
     $openDlg.Filter = "WAV Audio (*.wav)|*.wav"
     $openDlg.Title = [char]0x5BFC + [char]0x5165 + " WAV " + [char]0x97F3 + [char]0x6548
     if ($openDlg.ShowDialog() -eq "OK") {
+        if (-not (Test-Path $soundsDir)) { New-Item -ItemType Directory -Path $soundsDir -Force | Out-Null }
         $dest = Join-Path $soundsDir (Split-Path -Leaf $openDlg.FileName)
         Copy-Item $openDlg.FileName $dest -Force
         Refresh-SoundList
