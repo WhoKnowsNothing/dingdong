@@ -44,13 +44,23 @@ bash config.sh
 powershell -File config-ui.ps1
 ```
 
-Or edit `config.json` directly:
+Or edit `config.json` directly (v2 format):
 
 ```json
-{ "Stop": "sounds/denielcz-done_01.wav", "Notification": "sounds/pop.wav" }
+{
+  "version": 2,
+  "volume": 80,
+  "events": {
+    "Stop":              { "type": "wav",    "file": "sounds/denielcz-done_01.wav" },
+    "Notification":      { "type": "wav",    "file": "sounds/pop.wav" },
+    "PermissionRequest": { "type": "wav",    "file": "sounds/notify-descend.wav" },
+    "Elicitation":       { "type": "wav",    "file": "sounds/question-double.wav" },
+    "TeammateIdle":      { "type": "none" }
+  }
+}
 ```
 
-Set an event to `null` to mute it. Paths are relative to plugin root.
+Set an event's `type` to `"none"` to mute it, or `"system"` + `"sound"` to use Windows system sounds. Paths are relative to plugin root.
 
 ### Uninstall
 
@@ -69,7 +79,7 @@ bash scripts/uninstall.sh                      # Unix
 - **Per-event mute** (set to `null`)
 - **Async hooks** — never blocks Claude Code
 - **Zero dependencies** — pure shell + PowerShell
-- **Custom WAV import** — drop files into `sounds/`
+- **Custom WAV import** — drop `.wav` files into `sounds/`, or use the config tool's import feature to copy from any path
 
 ## Events
 
@@ -118,7 +128,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full dependency graph and data fl
 - **Async**: All hooks use `"async": true` — sound never blocks Claude Code
 - **Silent exit**: Missing config, unknown event, or missing file → clean exit 0, no error noise
 - **Portable paths**: Config uses relative paths; plugin root resolved at runtime by each script
-- **Windows audio**: Uses `Start-Process` → `Media.SoundPlayer.PlaySync()` for isolated audio context
+- **Windows audio**: Uses `winmm.dll PlaySound` via P/Invoke — no process hop, no flash window
 - **Unix audio**: Uses `afplay` (macOS), `paplay` (Linux), `aplay` (fallback)
 - **Install dir**: `~/.claude/plugins/dingdong/`
 - **Zero deps**: No npm, pip, gem, or brew — just shell and built-in OS tools
@@ -159,13 +169,23 @@ bash config.sh
 powershell -File config-ui.ps1
 ```
 
-或直接编辑 `config.json`：
+或直接编辑 `config.json`（v2 格式）：
 
 ```json
-{ "Stop": "sounds/denielcz-done_01.wav", "Notification": "sounds/pop.wav" }
+{
+  "version": 2,
+  "volume": 80,
+  "events": {
+    "Stop":              { "type": "wav",    "file": "sounds/denielcz-done_01.wav" },
+    "Notification":      { "type": "wav",    "file": "sounds/pop.wav" },
+    "PermissionRequest": { "type": "wav",    "file": "sounds/notify-descend.wav" },
+    "Elicitation":       { "type": "wav",    "file": "sounds/question-double.wav" },
+    "TeammateIdle":      { "type": "none" }
+  }
+}
 ```
 
-将事件值设为 `null` 可静音。路径相对于插件根目录。
+将事件 `type` 设为 `"none"` 可静音。路径相对于插件根目录。
 
 ### 卸载
 

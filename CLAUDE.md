@@ -8,7 +8,9 @@ Zero-dependency audio feedback for Claude Code — plays WAV sounds on hook even
 dingdong/
 ├── play-sound.ps1        # Windows entry point (winmm.dll PlaySound)
 ├── play-sound.sh          # Unix entry point (afplay/paplay/aplay)
-├── config.json            # Event → sound file mapping
+├── config-ui.ps1          # Windows WinForms configuration GUI
+├── config.sh              # Cross-platform terminal TUI configurator
+├── config.json            # Event → sound mapping (v2 format)
 ├── hooks.json             # Windows hook definitions (for install)
 ├── hooks.unix.json        # Unix hook definitions (for install)
 ├── scripts/
@@ -27,7 +29,7 @@ dingdong/
 Event → hooks in settings.json → play-sound.ps1/.sh → config.json lookup → WAV playback
 ```
 
-One process hop. No fallbacks. No volume control. No pub-sub.
+One process hop. No fallbacks. No pub-sub.
 
 ## Config (v2)
 
