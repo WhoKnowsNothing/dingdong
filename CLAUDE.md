@@ -29,19 +29,23 @@ Event → hooks in settings.json → play-sound.ps1/.sh → config.json lookup �
 
 One process hop. No fallbacks. No volume control. No pub-sub.
 
-## Config
+## Config (v2)
 
 ```json
 {
-  "Stop": "sounds/denielcz-done_01.wav",
-  "Notification": "sounds/pop.wav",
-  "PermissionRequest": "sounds/alert.wav",
-  "Elicitation": "sounds/question-double.wav",
-  "TeammateIdle": null
+  "version": 2,
+  "volume": 80,
+  "events": {
+    "Stop":              { "type": "wav",    "file": "sounds/denielcz-done_01.wav" },
+    "Notification":      { "type": "wav",    "file": "sounds/pop.wav" },
+    "PermissionRequest": { "type": "wav",    "file": "sounds/notify-descend.wav" },
+    "Elicitation":       { "type": "wav",    "file": "sounds/question-double.wav" },
+    "TeammateIdle":      { "type": "none" }
+  }
 }
 ```
 
-Set an event to `null` for silent. Paths are relative to the plugin root.
+Set `"type": "none"` for silent events. Paths are relative to the plugin root. `volume` is a percentage (0-100).
 
 ## Install
 

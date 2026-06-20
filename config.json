@@ -1,1 +1,11 @@
-{"Stop": "sounds/denielcz-done_01.wav", "Notification": "sounds/pop.wav", "PermissionRequest": "sounds/notify-descend.wav", "Elicitation": "sounds/question-double.wav", "TeammateIdle": null}
+{
+  "version": 2,
+  "volume": 80,
+  "events": {
+    "Stop":              { "type": "wav",    "file": "sounds/denielcz-done_01.wav" },
+    "Notification":      { "type": "wav",    "file": "sounds/pop.wav" },
+    "PermissionRequest": { "type": "wav",    "file": "sounds/notify-descend.wav" },
+    "Elicitation":       { "type": "wav",    "file": "sounds/question-double.wav" },
+    "TeammateIdle":      { "type": "none" }
+  }
+}
