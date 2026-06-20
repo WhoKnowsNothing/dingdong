@@ -4,22 +4,38 @@ set -euo pipefail
 EVENT="${1:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/config.json"
-
 [ ! -f "$CONFIG_FILE" ] && exit 0
 
-# Read sound file path for the event from config.json
-if command -v jq &>/dev/null; then
-  SOUND_PATH=$(jq -r --arg e "$EVENT" '(.[$e] // "null") | if . == "null" then "" else . end' "$CONFIG_FILE")
-elif command -v python3 &>/dev/null; then
+# Read config: support v1 (flat) and v2 (nested) format
+if command -v python3 &>/dev/null; then
   SOUND_PATH=$(python3 -c "
 import json, sys
-try:
-  with open('$CONFIG_FILE') as f:
+with open('$CONFIG_FILE') as f:
     c = json.load(f)
-  v = c.get('$EVENT')
-  print(v if v else '')
-except: pass
-" 2>/dev/null)
+# Detect v1 flat format
+if isinstance(c.get('Stop'), str):
+    val = c.get('$EVENT')
+    print(val if val else '')
+    sys.exit(0)
+# v2 nested format
+events = c.get('events', {})
+evt = events.get('$EVENT', {})
+t = evt.get('type', '')
+if t == 'none':
+    sys.exit(0)
+if t == 'wav':
+    print(evt.get('file', ''))
+    sys.exit(0)
+# fallback: unknown type or system → skip
+sys.exit(0)
+")
+elif command -v jq &>/dev/null; then
+  SOUND_PATH=$(jq -r --arg e "$EVENT" '
+    if .Stop | type == "string" then
+      .[$e] // ""
+    else
+      .events[$e] // {} | if .type == "none" then "" elif .type == "wav" then .file // "" else "" end
+    end' "$CONFIG_FILE")
 else
   exit 0
 fi
