@@ -14,6 +14,9 @@ Zero-dependency audio feedback for Claude Code — customizable WAV sounds trigg
 
 DingDong plays customizable WAV sounds when Claude Code fires hook events — Stop, Notification, PermissionRequest, Elicitation, TeammateIdle. No dependencies, no background services, one async process hop.
 
+<img width="752" height="584" alt="PixPin_2026-06-21_02-07-39" src="https://github.com/user-attachments/assets/4c4f1f0d-af10-417e-a108-d10bbc16efa3" />
+
+
 ## Quick Start
 
 ### Install
@@ -40,7 +43,7 @@ After install, run `/hooks` in Claude Code or restart to apply.
 # Terminal TUI (cross-platform)
 bash config.sh
 
-# WinForms GUI (Windows only)
+# WinForms GUI (Windows only, or run configure.bat)
 powershell -File config-ui.ps1
 ```
 
@@ -165,9 +168,12 @@ bash scripts/install.sh
 # 终端 TUI 界面（跨平台）
 bash config.sh
 
-# WinForms 图形界面（仅 Windows）
+# WinForms 图形界面（仅 Windows，也可以直接双击configure.bat）
 powershell -File config-ui.ps1
 ```
+<img width="752" height="584" alt="PixPin_2026-06-21_02-07-39" src="https://github.com/user-attachments/assets/f07274f8-a14c-458a-9e05-da047715a408" />
+
+
 
 或直接编辑 `config.json`（v2 格式）：
 
