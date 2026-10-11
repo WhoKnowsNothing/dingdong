@@ -1,67 +1,18 @@
-# DingDong for Claude Code
+# DingDong for Claude Code and Codex
 
-Zero-dependency audio feedback for Claude Code — plays WAV sounds on hook events.
+Local audio feedback with a shared configuration and sound library.
 
-## Structure
+- Maintain the common players and configuration tools in this repository.
+- `hooks.json` / `hooks.unix.json` are Claude Code adapters.
+- `integrations/codex/` contains the Codex manifest and hook templates.
+- `scripts/build-codex.ps1` creates a separate, self-contained Codex package.
+- Do not maintain a second player implementation in an installed plugin/cache directory.
+- User settings and imported sounds live in `~/.config/dingdong/`, overridable with an absolute `DINGDONG_HOME`.
+- Preserve shared data on reinstall/uninstall and preserve unrelated Claude hook handlers, including handlers in mixed matcher groups.
+- Windows code must remain compatible with Windows PowerShell 5.1 and Unicode paths.
+- Hook input must not be logged or persisted. Codex hooks return neutral JSON and never decide permissions.
+- Keep Codex hook templates out of the repository's `hooks/hooks.json` location to avoid Claude auto-discovery.
+- Use normal Codex hook review/trust after installing changed definitions.
 
-```
-dingdong/
-├── play-sound.ps1        # Windows entry point (winmm.dll PlaySound)
-├── play-sound.sh          # Unix entry point (afplay/paplay/aplay)
-├── config-ui.ps1          # Windows WinForms configuration GUI
-├── config.sh              # Cross-platform terminal TUI configurator
-├── config.json            # Event → sound mapping (v2 format)
-├── hooks.json             # Windows hook definitions (for install)
-├── hooks.unix.json        # Unix hook definitions (for install)
-├── scripts/
-│   ├── install.ps1        # Windows installer
-│   ├── install.sh         # Unix installer
-│   ├── uninstall.ps1      # Windows uninstaller
-│   └── uninstall.sh       # Unix uninstaller
-├── sounds/                # WAV files
-└── .claude-plugin/
-    └── plugin.json
-```
-
-## Data Flow
-
-```
-Event → hooks in settings.json → play-sound.ps1/.sh → config.json lookup → WAV playback
-```
-
-One process hop. No fallbacks. No pub-sub.
-
-## Config (v2)
-
-```json
-{
-  "version": 2,
-  "volume": 80,
-  "events": {
-    "Stop":              { "type": "wav",    "file": "sounds/denielcz-done_01.wav" },
-    "Notification":      { "type": "wav",    "file": "sounds/pop.wav" },
-    "PermissionRequest": { "type": "wav",    "file": "sounds/notify-descend.wav" },
-    "Elicitation":       { "type": "wav",    "file": "sounds/question-double.wav" },
-    "TeammateIdle":      { "type": "none" }
-  }
-}
-```
-
-Set `"type": "none"` for silent events. Paths are relative to the plugin root. `volume` is a percentage (0-100).
-
-## Install
-
-```sh
-# Windows (recommended: install to APPDATA)
-powershell -File scripts/install.ps1
-
-# Windows (install alongside project for development)
-powershell -File scripts/install.ps1 -ToProject
-
-# Unix
-bash scripts/install.sh
-
-# Uninstall
-powershell -File scripts/uninstall.ps1       # Windows
-bash scripts/uninstall.sh                     # Unix
-```
+See README.md for installation and ARCHITECTURE.md for the data flow.
+Run `python -m unittest discover -s tests -v` for integration checks.

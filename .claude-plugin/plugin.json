@@ -1,9 +1,9 @@
 {
   "name": "dingdong",
-  "description": "Zero-dependency audio feedback for Claude Code — WAV sounds triggered by hooks. Cross-platform (Windows/macOS/Linux).",
-  "version": "0.0.5",
+  "description": "Local audio feedback for Claude Code and Codex with shared sounds and settings. Cross-platform (Windows/macOS/Linux).",
+  "version": "0.0.7",
   "author": { "name": "WhoKnowsNothing" },
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "keywords": ["sounds", "hooks", "notification", "audio", "cross-platform", "dingdong"],
   "repository": {
     "type": "git",

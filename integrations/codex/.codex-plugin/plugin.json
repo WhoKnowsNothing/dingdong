@@ -1,0 +1,18 @@
+{
+  "name": "dingdong",
+  "version": "0.0.7",
+  "description": "DingDong audio feedback for Codex, sharing sounds and settings with Claude Code.",
+  "author": { "name": "WhoKnowsNothing" },
+  "license": "AGPL-3.0",
+  "homepage": "https://github.com/WhoKnowsNothing/dingdong",
+  "keywords": ["sounds", "hooks", "notification", "audio", "codex", "claude-code"],
+  "interface": {
+    "displayName": "DingDong 叮咚",
+    "shortDescription": "Claude Code 与 Codex 共用的提示音和设置。",
+    "longDescription": "完成回复、请求权限、需要用户输入和子代理结束时播放本地音效。两端共用用户目录中的配置和音效，插件升级保留设置。",
+    "developerName": "WhoKnowsNothing",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Help me configure DingDong notification sounds."
+  }
+}

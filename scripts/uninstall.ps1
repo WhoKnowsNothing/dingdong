@@ -1,86 +1,21 @@
-param([switch]$RemoveFiles)
-
-$pluginRoot = "$env:USERPROFILE\.claude\plugins\dingdong"
-
-Write-Host "DingDong Uninstaller (Windows)"
-Write-Host "=============================="
-
-function ConvertTo-Ht($obj) {
-    if ($obj -is [System.Management.Automation.PSCustomObject]) {
-        $ht = @{}
-        $obj.PSObject.Properties | ForEach-Object { $ht[$_.Name] = ConvertTo-Ht $_.Value }
-        $ht
-    } elseif ($obj -is [array]) {
-        ,@($obj | ForEach-Object { ConvertTo-Ht $_ })
-    } else { $obj }
+param([switch]$RemoveFiles, [string]$SettingsPath)
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'claude-settings.ps1')
+$userRoot = [Environment]::GetFolderPath('UserProfile')
+if (-not $SettingsPath) {
+    $claudeRoot = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $userRoot '.claude' }
+    $SettingsPath = Join-Path $claudeRoot 'settings.json'
 }
-
-$settingsPaths = @(
-    "$env:APPDATA\Claude Code\settings.json",
-    "$env:USERPROFILE\.claude\settings.json"
-)
-
-$modified = $false
-foreach ($settingsPath in $settingsPaths) {
-    if (-not (Test-Path $settingsPath)) { continue }
-
-    $content = Get-Content $settingsPath -Raw -Encoding UTF8
-    if (-not $content) { continue }
-
-    $settings = ConvertTo-Ht ($content | ConvertFrom-Json)
-    if (-not $settings.ContainsKey("hooks")) { continue }
-
-    $hooks = $settings["hooks"]
-    $dingdongEvents = @()
-
-    # Scan each event for DingDong entries
-    # Snapshot keys to avoid "collection was modified" enumeration error
-    $hookKeys = @($hooks.Keys)
-    $hookKeys | ForEach-Object {
-        $eventName = $_
-        $entries = $hooks[$eventName]
-        $filtered = @()
-        $found = $false
-
-        foreach ($entry in $entries) {
-            $isDingdong = $false
-            foreach ($hook in $entry["hooks"]) {
-                $cmd = $hook["command"]
-                if ($cmd -match "dingdong") { $isDingdong = $true; break }
-            }
-            if (-not $isDingdong) { $filtered += $entry }
-            else { $found = $true }
-        }
-
-        if ($found) {
-            $dingdongEvents += $eventName
-            if ($filtered.Count -gt 0) {
-                $hooks[$eventName] = $filtered
-            } else {
-                $hooks.Remove($eventName)
-            }
-        }
-    }
-
-    if ($dingdongEvents.Count -gt 0) {
-        if ($hooks.Count -eq 0) { $settings.Remove("hooks") }
-        else { $settings["hooks"] = $hooks }
-
-        $json = $settings | ConvertTo-Json -Depth 10
-        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-        [System.IO.File]::WriteAllText($settingsPath, $json, $utf8NoBom)
-        Write-Host "Removed DingDong hooks from: $settingsPath"
-        Write-Host "  Events affected: $($dingdongEvents -join ', ')"
-        $modified = $true
+$SettingsPath = [System.IO.Path]::GetFullPath($SettingsPath)
+if (Test-Path -LiteralPath $SettingsPath) { Update-DingDongClaudeHooks -SettingsPath $SettingsPath }
+if ($RemoveFiles) {
+    $allowedRoot = [System.IO.Path]::GetFullPath((Join-Path $userRoot '.claude\plugins'))
+    $pluginRoot = [System.IO.Path]::GetFullPath((Join-Path $allowedRoot 'dingdong'))
+    if (-not $pluginRoot.StartsWith($allowedRoot + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe plugin path.' }
+    if (Test-Path -LiteralPath $pluginRoot) {
+        $item = Get-Item -LiteralPath $pluginRoot -Force
+        if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) { throw 'Refusing to remove a linked plugin directory.' }
+        Remove-Item -LiteralPath $pluginRoot -Recurse -Force
     }
 }
-
-if (-not $modified) { Write-Host "No DingDong hooks found in settings.json" }
-
-if ($RemoveFiles -and (Test-Path $pluginRoot)) {
-    Remove-Item -Path $pluginRoot -Recurse -Force
-    Write-Host "Plugin files removed from: $pluginRoot"
-}
-
-Write-Host ""
-Write-Host "Done. Run '/hooks' or restart Claude Code."
+Write-Host 'DingDong Claude Code hooks removed. Shared settings and sounds are retained for Codex.'

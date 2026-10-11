@@ -1,21 +1,23 @@
-param([string]$Event)
+param([string]$Event, [switch]$DryRun)
 
 # winmm.dll P/Invoke — defined once at script scope to avoid Add-Type duplicate errors
-if (-not ([System.Management.Automation.PSTypeName]'DD').Type) {
+if (-not $DryRun -and -not ([System.Management.Automation.PSTypeName]'DD').Type) {
 Add-Type @'
 using System.Runtime.InteropServices;
 public class DD {
-    [DllImport("winmm.dll", SetLastError=true)]
+    [DllImport("winmm.dll", CharSet=CharSet.Unicode, SetLastError=true)]
     public static extern bool PlaySound(string pszSound, System.IntPtr hmod, uint fdwSound);
 }
 '@
 }
 
 $scriptDir = Split-Path -Parent $PSCommandPath
+. (Join-Path $scriptDir 'scripts/data-paths.ps1')
+$scriptDir = Get-DingDongConfigRoot -PluginRoot $scriptDir
 $configPath = Join-Path $scriptDir "config.json"
-if (-not (Test-Path $configPath)) { exit 0 }
+if (-not (Test-Path -LiteralPath $configPath)) { return }
 
-$config = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
 # --- v1 → v2 auto-upgrade ---
 if ($config.PSObject.Properties.Name -contains "Stop" -and $config.Stop -is [string]) {
@@ -30,10 +32,7 @@ if ($config.PSObject.Properties.Name -contains "Stop" -and $config.Stop -is [str
             $v2.events[$evt] = @{ type = "none" }
         }
     }
-    # Write back v2
-    $json = $v2 | ConvertTo-Json -Depth 10
-    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-    [System.IO.File]::WriteAllText($configPath, $json, $utf8NoBom)
+    # Interpret legacy data without rewriting a shared file during a hook.
     $config = $v2
     $events = $config.events
 } else {
@@ -42,10 +41,18 @@ if ($config.PSObject.Properties.Name -contains "Stop" -and $config.Stop -is [str
 
 # Look up event
 $eventCfg = $events.$Event
-if (-not $eventCfg) { exit 0 }
+if ($DryRun) {
+    $file = $null
+    if ($eventCfg.type -eq 'wav') {
+        $file = if ([System.IO.Path]::IsPathRooted($eventCfg.file)) { $eventCfg.file } else { Join-Path $scriptDir $eventCfg.file }
+    }
+    [pscustomobject]@{ event = $Event; config = $configPath; type = $(if ($eventCfg) { $eventCfg.type } else { 'none' }); file = $file } | ConvertTo-Json -Compress
+    return
+}
+if (-not $eventCfg) { return }
 
 $type = $eventCfg.type
-if ($type -eq "none") { exit 0 }
+if ($type -eq "none") { return }
 
 if ($type -eq "system") {
     $soundName = $eventCfg.sound
@@ -57,12 +64,14 @@ if ($type -eq "system") {
         "Beep"        { [System.Media.SystemSounds]::Beep.Play() }
         default       { [System.Media.SystemSounds]::Beep.Play() }
     }
-    exit 0
+    return
 }
 
 if ($type -eq "wav") {
-    $wavPath = Join-Path $scriptDir $eventCfg.file
-    if (-not (Test-Path $wavPath)) { exit 0 }
-    [DD]::PlaySound($wavPath, [System.IntPtr]::Zero, 0x00020000) | Out-Null
-    exit 0
+    $wavPath = if ([System.IO.Path]::IsPathRooted($eventCfg.file)) { $eventCfg.file } else { Join-Path $scriptDir $eventCfg.file }
+    if (-not (Test-Path -LiteralPath $wavPath)) { return }
+    if (-not [DD]::PlaySound($wavPath, [System.IntPtr]::Zero, 0x00020002)) {
+        throw 'DingDong: Windows could not play the configured WAV.'
+    }
+    return
 }

@@ -1,216 +1,71 @@
 # DingDong Architecture
 
+One source repository supplies both clients. Package directories are build/install outputs; user data is stored separately.
+
 ```mermaid
-graph TB
-    subgraph "Claude Code Runtime"
-        CC[Claude Code Events]
-        H[settings.json Hooks]
-    end
-
-    subgraph "Core Dispatch"
-        PS1[play-sound.ps1<br/>Windows]
-        SH[play-sound.sh<br/>Unix]
-        CFG[config.json<br/>Event→Sound Mapping]
-    end
-
-    subgraph "Sound Playback"
-        SPW[Start-Process<br/>powershell -Command<br/>Media.SoundPlayer]
-        SPM[afplay / paplay / aplay]
-    end
-
-    subgraph "Configuration Tools"
-        TUI[config.sh<br/>Terminal UI]
-        CF[config-ui.ps1<br/>WinForms GUI]
-    end
-
-    subgraph "Installation"
-        IP[install.ps1<br/>Windows]
-        IS[install.sh<br/>Unix]
-        UP[uninstall.ps1]
-        US[uninstall.sh]
-    end
-
-    subgraph "Assets"
-        WAV[sounds/*.wav<br/>13 files]
-        JD[hooks.json<br/>Windows hook defs]
-        JU[hooks.unix.json<br/>Unix hook defs]
-    end
-
-    CC -->|"Stop / Notification /<br/>PermissionRequest /<br/>Elicitation / TeammateIdle"| H
-    H -->|async command| PS1
-    H -->|async command| SH
-    PS1 -->|reads| CFG
-    SH -->|reads| CFG
-    CFG -->|lookup path| WAV
-    WAV --> SPW
-    WAV --> SPM
-    TUI -->|edits| CFG
-    CF -->|edits| CFG
-    IP -->|copies| PS1
-    IP -->|copies| CFG
-    IP -->|copies| WAV
-    IP -->|merges| JD
-    IS -->|copies| SH
-    IS -->|copies| CFG
-    IS -->|copies| WAV
-    IS -->|merges| JU
-    UP -->|removes from| H
-    US -->|removes from| H
-
-    style CC fill:#4a90d9,color:#fff
-    style CFG fill:#e6a23c,color:#fff
-    style PS1 fill:#52c41a,color:#fff
-    style SH fill:#52c41a,color:#fff
+flowchart LR
+    Claude[Claude Code events] --> CH[Claude hook definitions]
+    Codex[Codex events] --> CX[Codex hook definitions]
+    CX --> Wrapper[on-event.ps1 / on-event.sh]
+    CH --> Player[play-sound.ps1 / play-sound.sh]
+    Wrapper --> Player
+    Player --> Config[Shared config.json]
+    Config --> Sounds[Shared sounds directory]
+    UI[Configuration GUI / TUI] --> Config
+    UI --> Sounds
 ```
 
-## Data Flow
+## Source layout
 
-```
-Claude Code Event
-    │
-    ▼
-settings.json hook entry  ─── reads matcher ─── match? ─── yes ──→ async command
-    │                                                                   │
-    │                                                                    ▼
-    │                                               play-sound.ps1/.sh -Event <name>
-    │                                                                   │
-    │                                                                    ├── reads config.json
-    │                                                                    ├── look up sound path by event key
-    │                                                                    ├── validate file exists → silent exit if not
-    │                                                                    └── play WAV:
-    │                                                                         Windows: Start-Process powershell → Media.SoundPlayer.PlaySync()
-    │                                                                         macOS:   afplay
-    │                                                                         Linux:   paplay → aplay (fallback)
-    ▼
-   done (no feedback to Claude Code — async: true)
-```
-
-## File Dependency Graph
-
-```
-hooks.json / hooks.unix.json
-    └── references → play-sound.ps1 / play-sound.sh (via command string)
-
-play-sound.ps1
-    ├── reads → config.json
-    └── spawns → powershell -Command Media.SoundPlayer
-
-play-sound.sh
-    ├── reads → config.json (via jq / python3)
-    └── calls → afplay / paplay / aplay
-
-config.sh  (TUI)
-    ├── reads → config.json
-    ├── reads → sounds/*.wav (for listing)
-    ├── writes → config.json
-    └── calls → afplay / paplay / aplay / powershell (preview)
-
-install.ps1
-    ├── copies → play-sound.ps1 → target dir
-    ├── copies → config.json → target dir
-    ├── copies → sounds/*.wav → target dir/sounds/
-    ├── reads → hooks.json (hook definitions)
-    ├── reads/writes → settings.json (merge hooks)
-    └── resolves ${CLAUDE_PLUGIN_ROOT} → absolute paths
-
-install.sh
-    ├── copies → play-sound.sh → target dir
-    ├── copies → config.json → target dir
-    ├── copies → sounds/*.wav → target dir/sounds/
-    ├── reads → hooks.unix.json (hook definitions)
-    └── writes → settings.json (via python3)
-
-uninstall.ps1
-    ├── reads → settings.json
-    ├── scans hooks for DingDong entries (by command string matching)
-    └── removes → matching entries from settings.json
-
-uninstall.sh
-    ├── reads → settings.json
-    └── removes → hooks section entirely
-```
-
-## Install-Time Flow
-
-```
-                   install.ps1 / install.sh
-                           │
-               ┌───────────┴───────────┐
-               ▼                       ▼
-         Copy files              Register hooks
-               │                       │
-               ▼                       ▼
-      plugin root/                settings.json
-      ├── play-sound.ps1/.sh     "hooks": { ... }
-      ├── config.json
-      └── sounds/*.wav
-```
-
-## Event → Sound Mapping (config.json default)
-
-| Event | Matcher | Default Sound | File |
-|-------|---------|---------------|------|
-| Stop | `*` | `denielcz-done_01.wav` | hooks on all stop events |
-| Notification | `(?i)task.?complet\|done\|finished\|completed` | `pop.wav` | Only on completion keywords |
-| PermissionRequest | `Bash\|Write\|Edit\|Read` | `notify-descend.wav` | Only on tool permission requests |
-| Elicitation | `.*` | `question-double.wav` | All clarifications |
-| TeammateIdle | `.*` | `null` (silent) | All idle events |
-| PreToolUse | `AskUserQuestion` | (→ Elicitation sound) | Alternative elicitation trigger |
-| SubagentStop | `.*` | (→ Notification sound) | Alternative notification trigger |
-
-## Platform Comparison
-
-| Aspect | Windows | Unix (macOS/Linux) |
-|--------|---------|-------------------|
-| **Entry point** | `play-sound.ps1` | `play-sound.sh` |
-| **Hook defs** | `hooks.json` | `hooks.unix.json` |
-| **Config reader** | `ConvertFrom-Json` (PowerShell native) | `jq` → `python3` (fallback) |
-| **Sound player** | `Start-Process` → `Media.SoundPlayer::PlaySync()` | `afplay` (macOS) / `paplay` (Linux) / `aplay` (fallback) |
-| **Installer** | `install.ps1` | `install.sh` |
-| **Config UI** | `config-ui.ps1` (WinForms) | `config.sh` (terminal TUI) |
-| **Uninstall** | `uninstall.ps1` (scans + removes specific entries) | `uninstall.sh` (removes whole hooks section) |
-
-## Key Design Decisions
-
-1. **Wrapper script pattern**: hooks.json points to `play-sound.ps1` which reads `config.json` — users change sounds by editing one JSON file, not settings.json
-2. **Async hooks**: All hooks use `"async": true` + `"timeout": 10` — sound never blocks Claude Code
-3. **Zero dependencies**: Pure shell + PowerShell + built-in OS audio tools — no npm/pip/gem
-4. **Silent exit on error**: If config.json missing, event not found, or sound file missing → `exit 0` — no error noise
-5. **One process hop**: Start-Process for Windows audio creates isolated audio context (fixes hook background process audio issue)
-6. **Portable config**: Paths in config.json are relative — plugin root is resolved at runtime by the script
-
-## Project File Tree
-
-```
+```text
 dingdong/
-├── play-sound.ps1        # Windows entry point
-├── play-sound.sh          # Unix entry point
-├── config.json            # Event → WAV file mapping
-├── config.sh              # Terminal UI configurator (cross-platform)
-├── hooks.json             # Windows hook definitions
-├── hooks.unix.json        # Unix hook definitions
-├── CLAUDE.md              # Project instructions
-├── .gitignore
-├── .claude-plugin/
-│   ├── plugin.json        # Plugin metadata (v0.0.5)
-│   └── marketplace.json   # Marketplace listing
-├── scripts/
-│   ├── install.ps1        # Windows installer
-│   ├── install.sh         # Unix installer
-│   ├── uninstall.ps1      # Windows uninstaller
-│   └── uninstall.sh       # Unix uninstaller
-└── sounds/                # 13 WAV files
-    ├── alert.wav
-    ├── beep-soft.wav
-    ├── denielcz-done_01.wav
-    ├── ding.wav
-    ├── done-classic.wav
-    ├── done-fanfare.wav
-    ├── done-soft.wav
-    ├── error.wav
-    ├── notify-descend.wav
-    ├── pop.wav
-    ├── question-double.wav
-    ├── question-rising.wav
-    └── warning.wav
+  play-sound.ps1 / play-sound.sh    Shared players
+  config-ui.ps1 / config.sh        Shared configuration tools
+  configure.bat                   Windows configuration entry
+  config.json / sounds/           Installation defaults
+  hooks.json / hooks.unix.json    Claude Code event mappings
+  .claude-plugin/                 Original Claude metadata
+  integrations/codex/
+    .codex-plugin/plugin.json      Codex manifest template
+    hooks.json                    Codex event mappings
+  scripts/
+    data-paths.ps1 / .sh           Shared user-data location and initialization
+    on-event.ps1 / .sh             Neutral Codex JSON output
+    claude-settings.ps1 / .py      Preserve unrelated settings and hook handlers
+    install.ps1 / .sh              Claude installation and migration
+    uninstall.ps1 / .sh            Claude removal, shared data retained
+    build-codex.ps1                Generate a self-contained Codex package
+    update-codex.ps1               Back up, rebuild, validate and reinstall
+  tests/test_integration.py        Disposable-directory integration checks
 ```
+
+## Data and upgrades
+
+Both clients read `~/.config/dingdong/config.json`, or the absolute `DINGDONG_HOME` override.
+WAV paths are resolved relative to this configuration's directory unless absolute.
+Installers and configuration tools seed user data only when missing. Existing files win.
+Hooks can use bundled defaults before initialization, but never rewrite user data while playing sounds.
+
+The Windows installer first imports the existing Claude installation's configuration and WAVs.
+The Codex updater also initializes from its old source package if no shared configuration exists.
+For two different legacy configurations, deliberately seed the desired configuration first; old cache-only customizations need to be copied before upgrading.
+
+Codex packaging copies the repository's common players, UI, helpers and default sounds into its registered source directory.
+Its versioned runtime cache is installed by the Codex CLI. Configuration is outside both directories, so cache replacement preserves settings.
+Codex's `commandWindows` selects PowerShell on Windows; `command` selects Bash on Unix.
+
+The root deliberately has no `hooks/hooks.json`: Claude must not auto-discover Codex-only hooks.
+Codex's file appears at that path only inside the generated Codex package.
+
+## Playback and protocol
+
+- Windows: Unicode `winmm.dll PlaySound`, with missing-file/default-beep suppression.
+- Unix: `afplay`, `paplay`, or `aplay`; JSON parsing uses working python3 or jq.
+- Silent, unknown, or missing-file events do not block the clients.
+- Codex wrappers discard stdin and return `{}`, including on playback/configuration errors.
+- The Windows Codex wrapper deduplicates Stop callbacks by session/turn identity using atomically created empty hash-named files in shared `state/codex-stop/`. Markers expire after seven days; hook payloads are never persisted. Missing identities or unavailable state storage retain ordinary playback.
+- Codex supports four configured events: Stop, PermissionRequest, PreToolUse, SubagentStop.
+- User-input tool matchers include the synchronous and asynchronous tool names.
+- Codex's normal hook trust flow is retained. Package installation and audio playback do not prove automatic hook activation.
+
+The volume fields remain compatibility data; the players currently use system output volume.

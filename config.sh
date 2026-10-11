@@ -5,6 +5,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/scripts/data-paths.sh"
+SCRIPT_DIR="$(dingdong_initialize_data "$SCRIPT_DIR")"
 CONFIG_FILE="$SCRIPT_DIR/config.json"
 SOUNDS_DIR="$SCRIPT_DIR/sounds"
 
@@ -31,10 +33,10 @@ list_sounds() {
 
 # Read current event config from v1 or v2 format
 read_config() {
-  if command -v python3 &>/dev/null; then
+  if command -v python3 &>/dev/null && python3 --version &>/dev/null; then
     python3 -c "
 import json, sys
-with open('$CONFIG_FILE') as f:
+with open(sys.argv[1], encoding='utf-8-sig') as f:
     c = json.load(f)
 # v1 flat
 if isinstance(c.get('Stop'), str):
@@ -56,13 +58,15 @@ for evt in ['Stop','Notification','PermissionRequest','Elicitation','TeammateIdl
         print(f'{evt}|system|{e.get(\"sound\", \"\")}')
     else:
         print(f'{evt}|none|')
-"
+" "$CONFIG_FILE"
   elif command -v jq &>/dev/null; then
     jq -r --argjson evts '["Stop","Notification","PermissionRequest","Elicitation","TeammateIdle"]' '
-      if .Stop | type == "string" then
-        $evts[] | "\(.)|\(if . as $e | .[$e] | type == "string" then "wav|\(.[$e])" else "none|" end)"
+      . as $config | $evts[] as $event |
+      if ($config.Stop | type) == "string" then
+        "\($event)|\(if ($config[$event] | type) == "string" then "wav|\($config[$event])" else "none|" end)"
       else
-        $evts[] | "\(.)|\(if .events[.].type == "wav" then "wav|\(.events[.].file)" elif .events[.].type == "system" then "system|\(.events[.].sound)" else "none|" end)"
+        ($config.events[$event] // {}) as $entry |
+        "\($event)|\(if $entry.type == "wav" then "wav|\($entry.file)" elif $entry.type == "system" then "system|\($entry.sound)" else "none|" end)"
       end
     ' "$CONFIG_FILE"
   else

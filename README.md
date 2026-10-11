@@ -2,272 +2,136 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 
-Zero-dependency audio feedback for Claude Code — customizable WAV sounds triggered by hook events. Cross-platform (Windows / macOS / Linux).
+Claude Code 与 Codex 共用的本地提示音。一套播放器、一套音效库、一套用户设置；两端分别接入各自的事件回调，无后台服务。
 
----
+DingDong provides local audio feedback for Claude Code and Codex. Both clients share the same players, sound library and persistent user settings.
 
-[**English**](#english) · [**中文**](#chinese)
+## 共享配置 / Shared settings
 
----
+默认用户数据目录：
 
-<h1 id="english">English</h1>
+- Windows：`%USERPROFILE%\.config\dingdong\`
+- macOS / Linux：`~/.config/dingdong/`
 
-DingDong plays customizable WAV sounds when Claude Code fires hook events — Stop, Notification, PermissionRequest, Elicitation, TeammateIdle. No dependencies, no background services, one async process hop.
+其中 `config.json` 保存设置，`sounds/` 保存音效。设置一次，对两端生效；重装或升级插件保留这些数据。
+可用绝对路径环境变量 `DINGDONG_HOME` 指定其他目录，两端必须使用相同的值。
 
-<img width="752" height="584" alt="PixPin_2026-06-21_02-07-39" src="https://github.com/user-attachments/assets/4c4f1f0d-af10-417e-a108-d10bbc16efa3" />
+首次安装会迁移已有安装目录中的设置和 WAV；已有共享配置和同名音效不会被覆盖。如果原来两端设置不同，请先用要保留的一端初始化共享目录，并备份另一端。
+直接解压运行但尚未初始化共享目录时，播放器读取包内默认配置。
 
+User data lives outside versioned plugin caches. Installers seed it once and preserve it on subsequent installs. Use the same absolute `DINGDONG_HOME` in both clients to override its location.
 
-## Quick Start
+## 安装 / Install
 
-### Install
+### Claude Code
 
 ```powershell
 # Windows
-git clone https://github.com/WhoKnowsNothing/dingdong.git
-cd dingdong
-powershell -File scripts/install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1
 
-# macOS / Linux
-git clone https://github.com/WhoKnowsNothing/dingdong.git
-cd dingdong
+# macOS / Linux (python3 required for settings registration)
 bash scripts/install.sh
 ```
 
-The installer copies scripts and sounds to `~/.claude/plugins/dingdong/` and merges hook definitions into `settings.json`. Unix requires `jq` or `python3` for auto-registration.
+安装器只替换 DingDong 的回调，并备份设置文件；同组中的其他回调也会保留。Windows 将运行文件安装到 `~/.claude/plugins/dingdong/`。
+重新启动 Claude Code 加载更改。
 
-After install, run `/hooks` in Claude Code or restart to apply.
+### Codex
 
-### Configure
+Codex 安装包从本仓库生成，独立插件目录是生成结果；修改代码应在本仓库进行。
+
+已有本地市场中的 DingDong 时：
 
 ```powershell
-# Terminal TUI (cross-platform)
-bash config.sh
-
-# WinForms GUI (Windows only, or run configure.bat)
-powershell -File config-ui.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-codex.ps1
 ```
 
-Or edit `config.json` directly (v2 format):
+这个脚本通过 Codex CLI 查找已注册的本地来源，备份旧包、构建并更新缓存版本，再由 CLI 验证和安装，不依赖额外的 plugin-creator 辅助文件。若多个市场都有 DingDong，可用 `-Marketplace personal` 指定市场。
+首次安装需先将生成的 Codex 包注册到本地插件市场。在市场根目录的 `.agents/plugins/marketplace.json` 中添加 `dingdong` 条目，`source` 使用 `{"source":"local","path":"./plugins/dingdong"}`，并把生成包放入对应目录；已有市场应保留其他条目。完整结构见 [Codex 官方本地插件安装说明](https://developers.openai.com/plugins/build/plugins#install-a-local-plugin-manually)。然后运行 `codex plugin marketplace add <市场根目录>` 和 `codex plugin add dingdong@<市场名称>`；回调信任仍按 Codex 的正常流程处理。
+
+仅构建可分发包：
+
+```powershell
+powershell -File scripts/build-codex.ps1 -OutputDir ./dist/codex/dingdong
+```
+
+包内包含 Windows 与 Unix 播放入口；macOS/Linux 运行依赖系统音频工具及 python3 或 jq。
+Codex 的回调必须先在 `/hooks` 审核并信任，然后新开任务验证。安装成功不代表回调已获信任。
+详见 [Codex 官方回调文档](https://learn.chatgpt.com/docs/hooks)。
+
+For an existing local-marketplace installation, `scripts/update-codex.ps1` rebuilds from this repository and reinstalls through the Codex CLI without external plugin-creator helpers. Review changed hooks in `/hooks` and start a new task.
+
+## 配置 / Configure
+
+```powershell
+# Windows：也可以双击 configure.bat
+powershell -NoProfile -ExecutionPolicy Bypass -File config-ui.ps1
+
+# 终端配置工具
+bash config.sh
+```
+
+从仓库、Claude 安装目录或 Codex 包打开配置工具，都编辑同一份用户设置。导入 WAV 也保存到共享音效库。
 
 ```json
 {
   "version": 2,
   "volume": 80,
   "events": {
-    "Stop":              { "type": "wav",    "file": "sounds/denielcz-done_01.wav" },
-    "Notification":      { "type": "wav",    "file": "sounds/pop.wav" },
-    "PermissionRequest": { "type": "wav",    "file": "sounds/notify-descend.wav" },
-    "Elicitation":       { "type": "wav",    "file": "sounds/question-double.wav" },
+    "Stop":              { "type": "wav", "file": "sounds/denielcz-done_01.wav" },
+    "Notification":      { "type": "wav", "file": "sounds/pop.wav" },
+    "PermissionRequest": { "type": "wav", "file": "sounds/notify-descend.wav" },
+    "Elicitation":       { "type": "wav", "file": "sounds/question-double.wav" },
     "TeammateIdle":      { "type": "none" }
   }
 }
 ```
 
-Set an event's `type` to `"none"` to mute it, or `"system"` + `"sound"` to use Windows system sounds. Paths are relative to plugin root.
+- `type: none` 静音；`type: wav` 播放 WAV。
+- Windows 也支持 `type: system` 和 `sound: Hand/Asterisk/Beep/Question/Exclamation`。
+- 相对音效路径以配置文件所在目录为基准，也支持绝对文件路径。
+- 旧版平铺配置可以读取；事件触发时不改写配置。
+- 播放音量由系统控制；现有 `volume` 字段保留兼容，播放器尚不应用此字段。
 
-### Uninstall
+## 事件映射 / Events
 
-```powershell
-powershell -File scripts/uninstall.ps1        # Windows
-bash scripts/uninstall.sh                      # Unix
-```
+| 共用设置 | Claude Code 入口 | Codex 入口 |
+| --- | --- | --- |
+| Stop：回复结束 | Stop | Stop |
+| PermissionRequest：权限确认 | PermissionRequest | PermissionRequest |
+| Elicitation：需要输入 | MCP Elicitation；PreToolUse / AskUserQuestion | PreToolUse / request_user_input、request_user_input_async、send_user_message_async |
+| Notification：通知 | Notification；SubagentStop | SubagentStop |
+| TeammateIdle：队友空闲 | TeammateIdle | 无对应事件，保留设置 |
 
-## Features
+Claude 的回调定义位于 `hooks.json` 和 `hooks.unix.json`；Codex 的定义位于 `integrations/codex/`，构建时复制到独立包，避免两端自动加载对方的回调。
+具体匹配范围以对应定义为准。两端异步播放，不做权限决策。Codex 包装入口消费但不保存事件输入，并始终返回空 JSON 对象。
+Windows 的 Codex 完成回调按会话 ID 和本轮任务 ID 去重：同一轮重复、延迟或并发到达的 `Stop` 只播放一次；其他轮次和会话独立提示。去重状态位于共享目录的 `state/codex-stop/`，仅保留以哈希命名的空标记文件，七天后清理，不保存对话内容。缺少 ID 或状态目录不可写时仍正常尝试播放。
+v0.0.7 的本地重复与并发回调测试已通过；实际 Codex 使用中仍收到双响反馈，具体触发来源尚待排查。
 
-- **7 event types** with independent sound assignments
-- **Cross-platform**: Windows, macOS, Linux
-- **13 built-in WAV chimes** (no copyrighted audio)
-- **Terminal TUI** configurator (cross-platform)
-- **WinForms GUI** configurator (Windows only)
-- **Per-event mute** (set to `null`)
-- **Async hooks** — never blocks Claude Code
-- **Zero dependencies** — pure shell + PowerShell
-- **Custom WAV import** — drop `.wav` files into `sounds/`, or use the config tool's import feature to copy from any path
-
-## Events
-
-| Event | Trigger | Default Sound |
-|-------|---------|---------------|
-| **Stop** | Claude finishes a response | `denielcz-done_01.wav` |
-| **Notification** | Task completion notification | `pop.wav` |
-| **PermissionRequest** | Claude needs tool permission | `notify-descend.wav` |
-| **Elicitation** | Claude asks a clarifying question | `question-double.wav` |
-| **TeammateIdle** | Sub-agent is idle / stuck | *(silent)* |
-| **PreToolUse** → Elicitation | Alternative elicitation trigger | *(inherits Elicitation)* |
-| **SubagentStop** → Notification | Alternative notification trigger | *(inherits Notification)* |
-
-## Sounds
-
-| File | Tone | Best For |
-|------|------|----------|
-| `done-classic.wav` | Ascending C5→E5 chord | Task complete |
-| `done-soft.wav` | Soft A4 tone | Subtle completion |
-| `done-fanfare.wav` | C5→E5→G5 triad | Celebration |
-| `ding.wav` | Bright 1046Hz | Notification |
-| `pop.wav` | Short 800Hz burst | Quick feedback |
-| `beep-soft.wav` | Gentle 880Hz | Soft prompt |
-| `notify-descend.wav` | G5→E5 descending | Notification |
-| `alert.wav` | Mid 660Hz | Permission request |
-| `warning.wav` | Descending 440→349Hz | Agent idle |
-| `error.wav` | Staccato low tone | Error |
-| `question-rising.wav` | 400→1200Hz sweep | Clarification |
-| `question-double.wav` | 660→880Hz dual tone | Confirmation |
-| `denielcz-done_01.wav` | Classic chime | Default stop |
-
-Drop `.wav` files into the `sounds/` folder — they appear in the config UI automatically. 44100Hz 16-bit mono recommended.
-
-## Architecture
-
-```
-Event → settings.json hooks → play-sound.ps1/.sh → config.json lookup → WAV playback
-```
-
-One async process hop. No fallbacks. No state. No pub-sub.
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full dependency graph and data flow.
-
-## Technical Notes
-
-- **Async**: All hooks use `"async": true` — sound never blocks Claude Code
-- **Silent exit**: Missing config, unknown event, or missing file → clean exit 0, no error noise
-- **Portable paths**: Config uses relative paths; plugin root resolved at runtime by each script
-- **Windows audio**: Uses `winmm.dll PlaySound` via P/Invoke — no process hop, no flash window
-- **Unix audio**: Uses `afplay` (macOS), `paplay` (Linux), `aplay` (fallback)
-- **Install dir**: `~/.claude/plugins/dingdong/`
-- **Zero deps**: No npm, pip, gem, or brew — just shell and built-in OS tools
-
----
-
-<h1 id="chinese">中文</h1>
-
-DingDing（叮咚）是 Claude Code 的音频反馈插件。当 Claude Code 触发 Hook 事件时（Stop、Notification、PermissionRequest、Elicitation、TeammateIdle），播放可自定义的 WAV 音效。零依赖，无后台进程，一次异步调用即完成。
-
-## 快速开始
-
-### 安装
+## 卸载 / Uninstall
 
 ```powershell
-# Windows
-git clone https://github.com/WhoKnowsNothing/dingdong.git
-cd dingdong
-powershell -File scripts/install.ps1
+# Claude Code
+powershell -File scripts/uninstall.ps1
+bash scripts/uninstall.sh
 
-# macOS / Linux
-git clone https://github.com/WhoKnowsNothing/dingdong.git
-cd dingdong
-bash scripts/install.sh
+# Codex
+codex plugin remove dingdong@personal
 ```
 
-安装程序会自动：复制脚本和音效到 `~/.claude/plugins/dingdong/`，并将 Hook 配置合并到 `settings.json`。Unix 系统需要 `jq` 或 `python3` 用于自动注册。
+卸载任一端均保留共享配置与音效，另一端仍可使用。
 
-安装后在 Claude Code 中执行 `/hooks` 或重启生效。
-
-### 配置
+## 验证 / Verify
 
 ```powershell
-# 终端 TUI 界面（跨平台）
-bash config.sh
+python -m unittest discover -s tests -v
 
-# WinForms 图形界面（仅 Windows，也可以直接双击configure.bat）
-powershell -File config-ui.ps1
-```
-<img width="752" height="584" alt="PixPin_2026-06-21_02-07-39" src="https://github.com/user-attachments/assets/f07274f8-a14c-458a-9e05-da047715a408" />
-
-
-
-或直接编辑 `config.json`（v2 格式）：
-
-```json
-{
-  "version": 2,
-  "volume": 80,
-  "events": {
-    "Stop":              { "type": "wav",    "file": "sounds/denielcz-done_01.wav" },
-    "Notification":      { "type": "wav",    "file": "sounds/pop.wav" },
-    "PermissionRequest": { "type": "wav",    "file": "sounds/notify-descend.wav" },
-    "Elicitation":       { "type": "wav",    "file": "sounds/question-double.wav" },
-    "TeammateIdle":      { "type": "none" }
-  }
-}
+# 查看 Windows 播放器实际读取的配置和音效，不播放声音
+powershell -File play-sound.ps1 -Event Stop -DryRun
 ```
 
-将事件 `type` 设为 `"none"` 可静音。路径相对于插件根目录。
+测试覆盖双端共享设置、重装保留数据、旧配置迁移、混合回调保护、无效设置保护、Codex JSON 输出，以及带中文、空格和单引号路径的 Unix 播放入口。
+Windows 测试需 Windows PowerShell；Unix 音频检查使用替身，不表示 macOS/Linux 声卡已实机验证。
 
-### 卸载
-
-```powershell
-powershell -File scripts/uninstall.ps1        # Windows
-bash scripts/uninstall.sh                      # Unix
-```
-
-## 功能特性
-
-- **7 种事件**独立配置音效
-- **跨平台**：Windows、macOS、Linux
-- **13 个内置 WAV 音效**（纯代码生成，无版权问题）
-- **终端 TUI 配置界面**（跨平台）
-- **WinForms 图形配置界面**（仅 Windows）
-- **每事件单独静音**（设为 `null`）
-- **异步 Hook** — 不阻塞 Claude Code
-- **零依赖** — 纯 shell + PowerShell
-- **支持导入自定义 WAV**
-
-## 事件对照
-
-| 事件 | 触发条件 | 默认音效 |
-|------|----------|----------|
-| **Stop** | Claude 结束回复 | `denielcz-done_01.wav` |
-| **Notification** | 任务完成通知 | `pop.wav` |
-| **PermissionRequest** | Claude 请求工具权限 | `notify-descend.wav` |
-| **Elicitation** | Claude 提问澄清 | `question-double.wav` |
-| **TeammateIdle** | 子 agent 空闲/卡住 | *（静音）* |
-| **PreToolUse** → Elicitation | 替代提问触发 | *（沿用 Elicitation）* |
-| **SubagentStop** → Notification | 替代通知触发 | *（沿用 Notification）* |
-
-## 音效列表
-
-| 文件 | 音色 | 推荐用途 |
-|------|------|----------|
-| `done-classic.wav` | 上行 C5→E5 和弦 | 任务完成 |
-| `done-soft.wav` | 柔和 A4 音 | 低调完成 |
-| `done-fanfare.wav` | C5→E5→G5 三和弦 | 庆祝 |
-| `ding.wav` | 清脆 1046Hz | 通知 |
-| `pop.wav` | 短促 800Hz | 快速反馈 |
-| `beep-soft.wav` | 轻柔 880Hz | 柔和提示 |
-| `notify-descend.wav` | G5→E5 下行双音 | 通知提醒 |
-| `alert.wav` | 中频 660Hz | 权限请求 |
-| `warning.wav` | 下行 440→349Hz | 空闲警告 |
-| `error.wav` | 断奏低音 | 错误提示 |
-| `question-rising.wav` | 400→1200Hz 上升扫频 | 提问 |
-| `question-double.wav` | 660→880Hz 双音 | 确认 |
-| `denielcz-done_01.wav` | 经典提示音 | 默认完成音 |
-
-将 `.wav` 文件放入 `sounds/` 文件夹，配置界面会自动列出。推荐 44100Hz 16-bit 单声道。
-
-## 架构
-
-```
-Event → settings.json hooks → play-sound.ps1/.sh → config.json 查表 → WAV 播放
-```
-
-一次异步调用，无中间状态。
-
-完整依赖图和数据流见 [ARCHITECTURE.md](ARCHITECTURE.md)。
-
-## 技术说明
-
-- **异步**：所有 Hook 使用 `"async": true`，音效不阻塞 Claude Code
-- **静默退出**：配置缺失、事件未知或文件不存在 → 干净退出，无报错
-- **路径可迁移**：配置使用相对路径，插件根目录在运行时由脚本解析
-- **Windows 音频**：`Start-Process` → `Media.SoundPlayer.PlaySync()`，独立音频上下文
-- **Unix 音频**：`afplay`（macOS）、`paplay`（Linux）、`aplay`（降级）
-- **安装目录**：`~/.claude/plugins/dingdong/`
-- **零依赖**：无需 npm、pip、gem、brew
-
----
-
-## License
-
-AGPL-3.0 © [WhoKnowsNothing](https://github.com/WhoKnowsNothing)
-
-Commercial license available — see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
+结构见 [ARCHITECTURE.md](ARCHITECTURE.md)。内置 13 个 WAV；自定义 WAV 可通过配置工具导入。
+许可见 [LICENSE](LICENSE) 和 [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md)。

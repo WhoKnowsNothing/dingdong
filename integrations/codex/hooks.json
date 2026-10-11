@@ -1,0 +1,32 @@
+{
+  "description": "DingDong shared local audio. No approval decisions or transcript storage.",
+  "hooks": {
+    "Stop": [{ "hooks": [{
+      "type": "command",
+      "command": "bash \"${PLUGIN_ROOT}/scripts/on-event.sh\" Stop",
+      "commandWindows": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& (Join-Path ([Environment]::GetEnvironmentVariable('PLUGIN_ROOT')) 'scripts/on-event.ps1') -Event Stop\"",
+      "timeout": 10, "async": true
+    }] }],
+    "PermissionRequest": [{ "hooks": [{
+      "type": "command",
+      "command": "bash \"${PLUGIN_ROOT}/scripts/on-event.sh\" PermissionRequest",
+      "commandWindows": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& (Join-Path ([Environment]::GetEnvironmentVariable('PLUGIN_ROOT')) 'scripts/on-event.ps1') -Event PermissionRequest\"",
+      "timeout": 10, "async": true
+    }] }],
+    "PreToolUse": [{
+      "matcher": "(^|[._])(?:request_user_input(?:_async)?|send_user_message_async)$",
+      "hooks": [{
+        "type": "command",
+        "command": "bash \"${PLUGIN_ROOT}/scripts/on-event.sh\" Elicitation",
+        "commandWindows": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& (Join-Path ([Environment]::GetEnvironmentVariable('PLUGIN_ROOT')) 'scripts/on-event.ps1') -Event Elicitation\"",
+        "timeout": 10, "async": true
+      }]
+    }],
+    "SubagentStop": [{ "hooks": [{
+      "type": "command",
+      "command": "bash \"${PLUGIN_ROOT}/scripts/on-event.sh\" Notification",
+      "commandWindows": "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& (Join-Path ([Environment]::GetEnvironmentVariable('PLUGIN_ROOT')) 'scripts/on-event.ps1') -Event Notification\"",
+      "timeout": 10, "async": true
+    }] }]
+  }
+}

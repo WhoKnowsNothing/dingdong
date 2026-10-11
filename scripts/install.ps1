@@ -1,85 +1,45 @@
-param([string]$TargetDir, [switch]$ToProject)
+param([string]$TargetDir, [switch]$ToProject, [string]$SettingsPath)
+$ErrorActionPreference = 'Stop'
+$projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'data-paths.ps1')
+. (Join-Path $PSScriptRoot 'claude-settings.ps1')
 
-if ($ToProject) {
-    $pluginRoot = Split-Path -Parent $PSScriptRoot
-} elseif ($TargetDir) {
-    $pluginRoot = $TargetDir
-} else {
-    $pluginRoot = "$env:USERPROFILE\.claude\plugins\dingdong"
+$pluginRoot = if ($ToProject) { $projectRoot } elseif ($TargetDir) { [System.IO.Path]::GetFullPath($TargetDir) } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.claude\plugins\dingdong' }
+if (-not $SettingsPath) {
+    $claudeRoot = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path ([Environment]::GetFolderPath('UserProfile')) '.claude' }
+    $SettingsPath = Join-Path $claudeRoot 'settings.json'
 }
+$SettingsPath = [System.IO.Path]::GetFullPath($SettingsPath)
 
-Write-Host "DingDong Installer (Windows)"
-Write-Host "============================"
-Write-Host "Target: $pluginRoot"
-$projectRoot = (Resolve-Path "$PSScriptRoot\..").Path
-
-# Copy files only if source != destination
+# Migrate the existing installation before copying updated package files.
+$seedRoot = if (Test-Path -LiteralPath (Join-Path $pluginRoot 'config.json')) { $pluginRoot } else { $projectRoot }
+$dataRoot = Initialize-DingDongData -SourceRoot $seedRoot
 if ($projectRoot -ne $pluginRoot) {
-    New-Item -ItemType Directory -Path "$pluginRoot\sounds" -Force | Out-Null
-    Copy-Item -Path "$projectRoot\play-sound.ps1" -Destination "$pluginRoot\" -Force
-    Copy-Item -Path "$projectRoot\config.json" -Destination "$pluginRoot\" -Force
-    Copy-Item -Path "$projectRoot\sounds\*.wav" -Destination "$pluginRoot\sounds\" -Force
-} else {
-    Write-Host "In-place install — skipping file copy"
+    foreach ($file in @('play-sound.ps1', 'play-sound.sh', 'config-ui.ps1', 'configure.bat', 'config.sh',
+        'scripts/data-paths.ps1', 'scripts/data-paths.sh')) {
+        $destination = Join-Path $pluginRoot $file
+        [void][System.IO.Directory]::CreateDirectory((Split-Path -Parent $destination))
+        Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination $destination -Force
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $pluginRoot 'config.json'))) {
+        Copy-Item -LiteralPath (Join-Path $projectRoot 'config.json') -Destination (Join-Path $pluginRoot 'config.json')
+    }
+    [void][System.IO.Directory]::CreateDirectory((Join-Path $pluginRoot 'sounds'))
+    foreach ($sound in Get-ChildItem -LiteralPath (Join-Path $projectRoot 'sounds') -Filter '*.wav' -File) {
+        $destination = Join-Path $pluginRoot ('sounds/' + $sound.Name)
+        if (-not (Test-Path -LiteralPath $destination)) { Copy-Item -LiteralPath $sound.FullName -Destination $destination }
+    }
 }
 
-# Helper: convert PSCustomObject to hashtable (PS5.1 compatible)
-function ConvertTo-Ht($obj) {
-    if ($obj -is [System.Management.Automation.PSCustomObject]) {
-        $ht = @{}
-        $obj.PSObject.Properties | ForEach-Object { $ht[$_.Name] = ConvertTo-Ht $_.Value }
-        $ht
-    } elseif ($obj -is [array]) {
-        ,@($obj | ForEach-Object { ConvertTo-Ht $_ })
-    } else { $obj }
-}
-
-# Resolve settings.json path
-$settingsPaths = @(
-    "$env:APPDATA\Claude Code\settings.json",
-    "$env:USERPROFILE\.claude\settings.json"
-)
-$settingsPath = $null
-foreach ($p in $settingsPaths) {
-    if (Test-Path $p) { $settingsPath = $p; break }
-}
-if (-not $settingsPath) {
-    $settingsDir = "$env:APPDATA\Claude Code"
-    New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
-    $settingsPath = "$settingsDir\settings.json"
-}
-
-# Read or create settings (as hashtable for easy manipulation)
-$settings = @{}
-if (Test-Path $settingsPath) {
-    $content = Get-Content $settingsPath -Raw -Encoding UTF8
-    if ($content) { $settings = ConvertTo-Ht ($content | ConvertFrom-Json) }
-}
-
-# Read hooks definition and merge
-$hooksDef = ConvertTo-Ht (Get-Content "$PSScriptRoot\..\hooks.json" -Raw -Encoding UTF8 | ConvertFrom-Json)
-
-# Resolve ${CLAUDE_PLUGIN_ROOT} to actual path (hooks system doesn't auto-resolve it)
-function Resolve-HookPaths($obj) {
-    if ($obj -is [hashtable]) {
-        $result = @{}
-        $obj.Keys | ForEach-Object {
-            $result[$_] = Resolve-HookPaths $obj[$_]
+$definition = ConvertTo-DingDongHashtable (Get-Content -LiteralPath (Join-Path $projectRoot 'hooks.json') -Raw -Encoding UTF8 | ConvertFrom-Json)
+foreach ($groups in $definition.hooks.Values) {
+    foreach ($group in $groups) {
+        foreach ($hook in $group.hooks) {
+            $hook.command = $hook.command.Replace('${CLAUDE_PLUGIN_ROOT}', $pluginRoot)
         }
-        $result
-    } elseif ($obj -is [array]) {
-        ,@($obj | ForEach-Object { Resolve-HookPaths $_ })
-    } elseif ($obj -is [string]) {
-        $obj -replace '\$\{CLAUDE_PLUGIN_ROOT\}', $pluginRoot
-    } else { $obj }
+    }
 }
-$resolvedHooks = Resolve-HookPaths $hooksDef["hooks"]
-$settings["hooks"] = $resolvedHooks
-
-# Write with UTF8 No BOM (PS5.1 compatible)
-$json = $settings | ConvertTo-Json -Depth 10
-$utf8NoBom = New-Object System.Text.UTF8Encoding $false
-[System.IO.File]::WriteAllText($settingsPath, $json, $utf8NoBom)
-
-Write-Host "Done! Hooks registered in: $settingsPath"
-Write-Host "Run '/hooks' in Claude Code or restart to apply."
+Update-DingDongClaudeHooks -SettingsPath $SettingsPath -NewHooks $definition.hooks
+Write-Host "Claude Code hooks: $SettingsPath"
+Write-Host "Shared Claude Code / Codex settings: $(Join-Path $dataRoot 'config.json')"
+Write-Host 'Restart Claude Code to load the updated hooks.'

@@ -1,37 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
-PLUGIN_DIR="${1:-$HOME/.claude/plugins/dingdong}"
-REMOVE_FILES="${2:-false}"
-
-echo "DingDong Uninstaller"
-echo "===================="
-
-# Remove hooks from settings.json
-SETTINGS_FILE="$HOME/.claude/settings.json"
-if [ -f "$SETTINGS_FILE" ] && command -v python3 &>/dev/null; then
-    python3 -c "
-import json
-try:
-    with open('$SETTINGS_FILE') as f:
-        settings = json.load(f)
-    if 'hooks' in settings:
-        del settings['hooks']
-        with open('$SETTINGS_FILE', 'w') as f:
-            json.dump(settings, f, indent=2)
-        print('Hooks removed')
-    else:
-        print('No hooks found')
-except (FileNotFoundError, json.JSONDecodeError):
-    print('No settings file')
-"
-elif [ ! -f "$SETTINGS_FILE" ]; then
-    echo "settings.json not found."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+case "$(uname -s)" in
+  CYGWIN*|MINGW*|MSYS*)
+    [ "${2:-false}" != true ] || { echo 'Use uninstall.ps1 -RemoveFiles on Windows.' >&2; exit 1; }
+    exec powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$SCRIPT_DIR/uninstall.ps1")"
+    ;;
+esac
+python3 "$SCRIPT_DIR/claude-settings.py" uninstall "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+if [ "${2:-false}" = true ]; then
+  PLUGIN_DIR="${1:-$HOME/.claude/plugins/dingdong}"
+  if [ "$PLUGIN_DIR" != "$HOME/.claude/plugins/dingdong" ] || [ -L "$PLUGIN_DIR" ]; then
+    echo 'Only the default, unlinked plugin directory can be removed automatically.' >&2
+    exit 1
+  fi
+  rm -rf -- "$PLUGIN_DIR"
 fi
-
-if [ "$REMOVE_FILES" = "true" ] && [ -d "$PLUGIN_DIR" ]; then
-    rm -rf "$PLUGIN_DIR"
-    echo "Plugin files removed from: $PLUGIN_DIR"
-fi
-
-echo "Done. Run '/hooks' or restart Claude Code."
+echo 'DingDong Claude Code hooks removed. Shared settings and sounds are retained for Codex.'

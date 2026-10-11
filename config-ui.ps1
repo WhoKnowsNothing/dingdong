@@ -6,13 +6,15 @@ Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System.Runtime.InteropServices;
 public class DD {
-    [DllImport("winmm.dll", SetLastError=true)]
+    [DllImport("winmm.dll", CharSet=CharSet.Unicode, SetLastError=true)]
     public static extern bool PlaySound(string pszSound, System.IntPtr hmod, uint fdwSound);
 }
 '@
 
 # paths
 $scriptDir = Split-Path -Parent $PSCommandPath
+. (Join-Path $scriptDir 'scripts/data-paths.ps1')
+$scriptDir = Initialize-DingDongData -SourceRoot $scriptDir
 $soundsDir = Join-Path $scriptDir "sounds"
 $configPath = Join-Path $scriptDir "config.json"
 
