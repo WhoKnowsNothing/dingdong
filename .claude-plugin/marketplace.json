@@ -11,7 +11,7 @@
         "repo": "WhoKnowsNothing/dingdong"
       },
       "description": "Local audio feedback for Claude Code and Codex with shared sounds and settings. Cross-platform (Windows/macOS/Linux).",
-      "version": "0.0.7"
+      "version": "0.0.8"
     }
   ]
 }

@@ -211,6 +211,36 @@ class IntegrationTests(unittest.TestCase):
             list(pool.map(lambda _: self.invoke_codex_event(payload), range(6)))
         self.assertEqual(self.played.read_text().splitlines(), ['Stop'])
 
+    def test_codex_utf8_completions_deduplicate_under_legacy_console_encoding(self):
+        self.stub_codex_audio()
+        launcher = self.work / 'legacy-console.ps1'
+        launcher.write_text(
+            "[Console]::InputEncoding = [Text.Encoding]::GetEncoding(936)\n"
+            "& (Join-Path $env:DINGDONG_TEST_PLUGIN 'scripts/on-event.ps1') -Event Stop\n",
+            encoding='utf-8')
+        self.env['DINGDONG_TEST_PLUGIN'] = str(self.codex)
+        payload = {'session_id': 'session-a', 'turn_id': 'turn-1',
+                   'transcript_path': r'C:\sessions\conversation.jsonl',
+                   'last_assistant_message': '修复好'}
+        for _ in range(2):
+            result = self.ps(launcher, input_text=json.dumps(payload, ensure_ascii=False))
+            self.assertEqual(result.stdout.strip(), '{}')
+            self.assertEqual(result.stderr, '')
+        self.assertEqual(self.played.read_text().splitlines(), ['Stop'])
+
+    def test_codex_background_completions_do_not_play_task_done_sound(self):
+        self.stub_codex_audio()
+        foreground = {'session_id': 'session-a', 'turn_id': 'turn-1',
+                      'transcript_path': r'C:\sessions\conversation.jsonl'}
+        self.invoke_codex_event(foreground)
+        for path in (None, ''):
+            self.invoke_codex_event({'session_id': 'internal-session', 'turn_id': 'internal-turn',
+                                     'transcript_path': path})
+        # A new user task may finish immediately and must still notify.
+        self.invoke_codex_event({**foreground, 'turn_id': 'turn-2'})
+        self.assertEqual(self.played.read_text().splitlines(), ['Stop', 'Stop'])
+        self.assertEqual(len(list((self.data / 'state/codex-stop').glob('*.done'))), 2)
+
     def test_codex_other_events_and_unidentified_completions_keep_playing(self):
         self.stub_codex_audio()
         payload = {'session_id': 'session-a', 'turn_id': 'turn-1'}

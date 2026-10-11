@@ -64,6 +64,7 @@ Codex's file appears at that path only inside the generated Codex package.
 - Silent, unknown, or missing-file events do not block the clients.
 - Codex wrappers discard stdin and return `{}`, including on playback/configuration errors.
 - The Windows Codex wrapper deduplicates Stop callbacks by session/turn identity using atomically created empty hash-named files in shared `state/codex-stop/`. Markers expire after seven days; hook payloads are never persisted. Missing identities or unavailable state storage retain ordinary playback.
+- Windows hook stdin is decoded as UTF-8 regardless of the console code page. Stop inputs with an explicitly empty/null transcript path are ephemeral and do not play task-completion audio; this includes background metadata generation and ephemeral CLI tasks. Inputs without that field retain legacy/manual behavior.
 - Codex supports four configured events: Stop, PermissionRequest, PreToolUse, SubagentStop.
 - User-input tool matchers include the synchronous and asynchronous tool names.
 - Codex's normal hook trust flow is retained. Package installation and audio playback do not prove automatic hook activation.

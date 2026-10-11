@@ -10,6 +10,12 @@ $ErrorActionPreference = 'Stop'
 function Test-DingDongNewCompletion([string]$Payload) {
     try { $completion = $Payload | ConvertFrom-Json -ErrorAction Stop }
     catch { return $true }
+    if ($null -ne $completion -and $null -ne $completion.PSObject.Properties['transcript_path'] -and
+        [string]::IsNullOrWhiteSpace($completion.transcript_path)) {
+        # Codex also finishes ephemeral title/summary jobs after a user turn.
+        # Those have no transcript and must not announce another task completion.
+        return $false
+    }
     if ($completion.session_id -isnot [string] -or [string]::IsNullOrWhiteSpace($completion.session_id) -or
         $completion.turn_id -isnot [string] -or [string]::IsNullOrWhiteSpace($completion.turn_id)) {
         # Older clients/manual invocations without an identity must still notify.
@@ -50,6 +56,9 @@ function Test-DingDongNewCompletion([string]$Payload) {
 }
 
 try {
+    # Codex writes UTF-8 JSON; the Windows console may default to a legacy code page.
+    # Misdecoding a Chinese response can invalidate JSON and bypass deduplication.
+    [Console]::InputEncoding = New-Object System.Text.UTF8Encoding $false
     $payload = [Console]::In.ReadToEnd()
     $play = $true
     if ($Event -eq 'Stop') {

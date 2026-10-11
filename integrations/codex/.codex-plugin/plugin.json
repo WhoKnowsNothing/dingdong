@@ -1,6 +1,6 @@
 {
   "name": "dingdong",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "DingDong audio feedback for Codex, sharing sounds and settings with Claude Code.",
   "author": { "name": "WhoKnowsNothing" },
   "license": "AGPL-3.0",

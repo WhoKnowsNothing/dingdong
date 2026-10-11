@@ -1,7 +1,7 @@
 {
   "name": "dingdong",
   "description": "Local audio feedback for Claude Code and Codex with shared sounds and settings. Cross-platform (Windows/macOS/Linux).",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "author": { "name": "WhoKnowsNothing" },
   "license": "AGPL-3.0",
   "keywords": ["sounds", "hooks", "notification", "audio", "cross-platform", "dingdong"],
